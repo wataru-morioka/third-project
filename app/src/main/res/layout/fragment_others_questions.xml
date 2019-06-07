@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:tools="http://schemas.android.com/tools"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             tools:context=".ui.OthersQuestions" android:id="@+id/others_questions">
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" android:background="#35383A">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:orientation="vertical" android:background="#35383A">
+            <TextView
+                    android:text="履歴なし"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp" android:id="@+id/textView6" android:textSize="14sp"/>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

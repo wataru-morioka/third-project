@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:tools="http://schemas.android.com/tools"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             tools:context=".ui.MainActivity" android:id="@+id/own_questions">
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" android:background="#35383A">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:orientation="vertical">
+            <TextView
+                    android:text="履歴なし"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/own_sample_tv" android:height="50dp"
+                    android:editable="false"/>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

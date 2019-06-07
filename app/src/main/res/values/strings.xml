@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">ThirdProject</string>
+    <string name="registration_id">ID登録</string>
+    <string name="register_bt">登録</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>
