@@ -22,4 +22,5 @@ class Question {
     var determinationFlag: Boolean = false
     var createdDateTime: String = ""
     var modifiedDateTime: String? = null
+    var deleteFlag: Boolean? = false
 }

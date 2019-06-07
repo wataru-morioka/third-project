@@ -8,9 +8,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.morioka.thirdproject.R
-import com.morioka.thirdproject.model.AppDatabase
-import com.morioka.thirdproject.model.Target
-import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.service.CommonService
 import com.morioka.thirdproject.service.TargetSpinnerAdapter
 import kotlinx.android.synthetic.main.fragment_create_question.*
@@ -19,10 +16,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import android.widget.*
 import com.google.gson.Gson
-import com.morioka.thirdproject.model.QuestionRequest
+import com.morioka.thirdproject.model.*
+import com.morioka.thirdproject.model.Target
 import com.rabbitmq.client.ConnectionFactory
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 // TODO: Rename parameter arguments, choose names that match
@@ -147,17 +148,21 @@ class CreateQuestion : Fragment() {
                 //TODO エラー処理
                 channel.queueDeclare(QUEUE_NAME, false, false, false, null)
 
+                //DBに登録し、その際のquestionIdを取得
+                val questionId = registerQuestion(selectedTarget.targetNumber)
+
                 //メッセージ作成
                 val questionRequest = QuestionRequest(
+                    questionId,
                     question_tv.text.toString(),
                     answer1_tv.text.toString(),
                     answer2_tv.text.toString(),
-                    selectedTarget.targetNumber
+                    selectedTarget.targetNumber,
+                    5
                 )
 
                 //クラスオベジェクトをJSON文字列にデシリアライズ
-                val gson = Gson()
-                val message = gson.toJson(questionRequest)
+                val message = Gson().toJson(questionRequest)
 
                 //TODO エラー処理
                 channel.basicPublish("", QUEUE_NAME, null, message.toByteArray(charset("UTF-8")))
@@ -181,6 +186,21 @@ class CreateQuestion : Fragment() {
         activity?.runOnUiThread{
             Toast.makeText(activity, "送信が完了しました", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    //DBに登録し、その際のquestionIdを取得
+    private fun registerQuestion(targetNumber: Int): Long{
+        val question = Question()
+        question.owner = "own"
+        question.question = question_tv.text.toString()
+        question.answer1 = answer1_tv.text.toString()
+        question.answer2 = answer2_tv.text.toString()
+        question.targetNumber = targetNumber
+        question.timePeriod = 5
+        question.createdDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
+
+        //TODO エラー処理
+        return (_dbContext as AppDatabase).questionFactory().insert(question)
     }
 
     private fun displayErrorMessage(message: String){

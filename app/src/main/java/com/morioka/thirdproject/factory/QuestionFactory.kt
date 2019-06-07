@@ -7,7 +7,7 @@ import com.morioka.thirdproject.model.Question
 interface QuestionFactory {
 
     @Insert
-    fun insert(question: Question)
+    fun insert(question: Question): Long
 
     @Update
     fun update(question: Question)
