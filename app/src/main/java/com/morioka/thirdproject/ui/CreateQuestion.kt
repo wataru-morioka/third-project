@@ -45,6 +45,7 @@ private const val QUEUE_NAME = "question"
 class CreateQuestion : Fragment() {
     // TODO: Rename and change types of parameters
     private var _sessionId: String? = null
+    private var _userId: String? = null
     private var _status: Int = 0
     private var _listener: OnFragmentInteractionListener? = null
     private val _dialog = ProgressDialog()
@@ -56,7 +57,7 @@ class CreateQuestion : Fragment() {
         super.onCreate(savedInstanceState)
         arguments?.let {
             _sessionId = it.getString(ARG_PARAM1)
-            //_status = it.getInt(ARG_PARAM2)
+            _userId = it.getString(ARG_PARAM3)
         }
 
         _dbContext = CommonService().getDbContext(context!!)
@@ -130,12 +131,12 @@ class CreateQuestion : Fragment() {
             _dialog.show(fragmentManager , "test")
 
             //質問をキューサーバに送信
-            askMyQuestioni()
+            askMyQuestionin()
         }
     }
 
     //質問をキューサーバに送信
-    private fun askMyQuestioni(){
+    private fun askMyQuestionin(){
         val selectedTarget = target_spinner.selectedItem as Target
 
         runBlocking {
@@ -153,6 +154,7 @@ class CreateQuestion : Fragment() {
 
                 //メッセージ作成
                 val questionRequest = QuestionRequest(
+                    _userId as String,
                     questionId,
                     question_tv.text.toString(),
                     answer1_tv.text.toString(),
@@ -164,8 +166,12 @@ class CreateQuestion : Fragment() {
                 //クラスオベジェクトをJSON文字列にデシリアライズ
                 val message = Gson().toJson(questionRequest)
 
+                channel.txSelect()
+
                 //TODO エラー処理
                 channel.basicPublish("", QUEUE_NAME, null, message.toByteArray(charset("UTF-8")))
+
+                channel.txCommit()
 
                 println(" [x] Sent '$message'")
 

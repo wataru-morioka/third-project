@@ -12,6 +12,8 @@ service Authen {
     rpc Register (RegistrationRequest) returns (RegistrationResult) {}
     // ログイン認証処理依頼
     rpc Login (LoginRequest) returns (LoginResult) {}
+    // ログアウト処理依頼
+    rpc Logout (LogoutRequest) returns (LogoutResult) {}
 }
 
 // 空のmessage
@@ -40,4 +42,11 @@ message LoginResult {
     int32 status = 3;
 }
 
+message LogoutRequest {
+    string sessionId = 1;
+}
+
+message LogoutResult {
+    bool result = 1;
+}
 
