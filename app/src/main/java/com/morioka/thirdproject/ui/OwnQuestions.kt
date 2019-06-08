@@ -1,13 +1,25 @@
 package com.morioka.thirdproject.ui
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.support.v4.app.Fragment
+import android.support.v7.widget.LinearLayoutManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.morioka.thirdproject.R
+import com.morioka.thirdproject.model.AppDatabase
+import com.morioka.thirdproject.model.Question
 import com.morioka.thirdproject.model.User
+import com.morioka.thirdproject.service.CommonService
+import com.morioka.thirdproject.service.RecycleOthersQuestioinsViewAdapter
+import com.morioka.thirdproject.service.RecycleOwnQuestioinsViewAdapter
+import kotlinx.android.synthetic.main.fragment_own_questions.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 
 // TODO: Rename parameter arguments, choose names that match
@@ -31,6 +43,7 @@ class OwnQuestions : Fragment() {
     private var _status: Int = 0
     private var _userId: String? = null
     private var _listener: OnFragmentInteractionListener? = null
+    private var _dbContext: AppDatabase? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +52,7 @@ class OwnQuestions : Fragment() {
             _status = it.getInt(ARG_PARAM2)
             _userId = it.getString(ARG_PARAM3)
         }
+        _dbContext = CommonService().getDbContext(context!!)
     }
 
     override fun onCreateView(
@@ -49,19 +63,45 @@ class OwnQuestions : Fragment() {
         return inflater.inflate(R.layout.fragment_own_questions, container, false)
     }
 
+    // Viewの生成が完了した後に呼ばれる
+    // UIパーツの設定などを行う
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        var othersQuestionList = listOf<Question>()
+
+        runBlocking {
+            GlobalScope.launch {
+                othersQuestionList = (_dbContext as AppDatabase).questionFactory().getOthersQuestions("own")
+            }.join()
+        }
+
+        val adapter = RecycleOwnQuestioinsViewAdapter(othersQuestionList, object : RecycleOwnQuestioinsViewAdapter.ListListener {
+            override fun onClickRow(tappedView: View, question: Question) {
+                val intent = Intent(activity, DetailOwnQuestionActivity::class.java)
+                intent.putExtra("QUESTION_ID", question.id)
+                startActivity(intent)
+            }
+        })
+
+        recycle_own_view.setHasFixedSize(true)
+        recycle_own_view.layoutManager = LinearLayoutManager(activity)
+        recycle_own_view.adapter = adapter
+    }
+
     // TODO: Rename method, update argument and hook method into UI event
     fun onButtonPressed(uri: Uri) {
         _listener?.onFragmentInteraction(uri)
     }
 
-//    override fun onAttach(context: Context) {
-//        super.onAttach(context)
-//        if (context is OnFragmentInteractionListener) {
-//            listener = context
-//        } else {
-//            throw RuntimeException(context.toString() + " must implement OnFragmentInteractionListener")
-//        }
-//    }
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        if (context is OnFragmentInteractionListener) {
+            _listener = context
+        } else {
+            throw RuntimeException(context.toString() + " must implement OnFragmentInteractionListener")
+        }
+    }
 
     override fun onDetach() {
         super.onDetach()

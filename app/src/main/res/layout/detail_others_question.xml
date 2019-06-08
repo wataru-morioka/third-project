@@ -3,91 +3,105 @@
                                              xmlns:app="http://schemas.android.com/apk/res-auto"
                                              android:layout_width="match_parent"
                                              android:layout_height="match_parent">
-    <LinearLayout
-            android:orientation="vertical"
-            android:layout_width="411dp"
-            android:layout_height="715dp"
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" android:background="#35383A"
             app:layout_constraintStart_toStartOf="parent" app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent"
-            android:layout_marginTop="8dp">
-        <TextView
-                android:text="Question"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:id="@+id/textView10" android:layout_marginLeft="10dp"
-                android:layout_marginTop="10dp"/>
-        <TextView
-                android:text="質問内容"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:id="@+id/textView11" android:layout_marginLeft="10dp"
-                android:layout_marginTop="2dp" android:layout_marginRight="10dp"/>
-        <LinearLayout
-                android:orientation="horizontal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+            app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent">
+        <LinearLayout android:orientation="vertical"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      app:layout_constraintStart_toStartOf="parent" app:layout_constraintHorizontal_bias="0.5"
+                      app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent"
+                      android:background="#35383A">
             <TextView
-                    android:text="Answer①"
+                    android:text="Question"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/textView12" android:layout_marginLeft="10dp"
-                    android:layout_marginTop="10dp"/>
+                    android:layout_height="wrap_content" android:id="@+id/textView10" android:layout_marginLeft="10dp"
+                    android:layout_marginTop="10dp" android:textColor="#F1810E"/>
             <TextView
-                    android:text="00%"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/textView14" android:layout_weight="1"
-                    android:layout_marginTop="10dp" android:layout_marginLeft="10dp"/>
-            <TextView
-                    android:text="your_choice"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/textView15" android:layout_weight="1"
-                    android:layout_marginTop="10dp" android:layout_marginLeft="10dp"/>
-        </LinearLayout>
-        <TextView
-                android:text="回答1"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:id="@+id/textView16" android:layout_marginLeft="10dp"
-                android:layout_marginTop="2dp" android:layout_marginRight="10dp"/>
-        <LinearLayout
-                android:orientation="horizontal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-            <TextView
-                    android:text="Answer②"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/textView17" android:layout_marginLeft="10dp"
-                    android:layout_marginTop="10dp"/>
-            <TextView
-                    android:text="00%"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/textView18" android:layout_weight="1"
-                    android:layout_marginTop="10dp" android:layout_marginLeft="10dp"/>
-            <TextView
-                    android:text="your_choice"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/textView19" android:layout_weight="1"
-                    android:layout_marginTop="10dp" android:layout_marginLeft="10dp"/>
-        </LinearLayout>
-        <TextView
-                android:text="回答2"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:id="@+id/textView13" android:layout_marginLeft="10dp"
-                android:layout_marginTop="2dp" android:layout_marginRight="10dp"/>
-        <LinearLayout
-                android:orientation="horizontal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
-                android:layout_marginTop="30dp">
-            <TextView
-                    android:text="Your Choice:"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/textView20" android:layout_weight="1"/>
-            <Spinner
+                    android:text="質問内容"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:id="@+id/spinner3" android:layout_weight="1"/>
+                    android:layout_height="wrap_content" android:id="@+id/others_question_tv"
+                    android:layout_marginLeft="10dp"
+                    android:layout_marginTop="2dp" android:layout_marginRight="10dp" android:textColor="#F2F2F2"/>
+            <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                <TextView
+                        android:text="Answer①"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/textView12"
+                        android:layout_marginLeft="10dp"
+                        android:layout_marginTop="10dp" android:textColor="#F1810E"/>
+                <TextView
+                        android:text="00%"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/answer1_percentage_tv"
+                        android:layout_weight="1"
+                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"/>
+                <TextView
+                        android:text="00人"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/answer1_number_tv"
+                        android:layout_weight="1"
+                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"/>
+            </LinearLayout>
+            <TextView
+                    android:text="回答1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/answer1_tv" android:layout_marginLeft="10dp"
+                    android:layout_marginTop="2dp" android:layout_marginRight="10dp" android:textColor="#F2F2F2"/>
+            <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                <TextView
+                        android:text="Answer②"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/textView17"
+                        android:layout_marginLeft="10dp"
+                        android:layout_marginTop="10dp" android:textColor="#F1810E"/>
+                <TextView
+                        android:text="00%"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/answer2_percentage_tv"
+                        android:layout_weight="1"
+                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"/>
+                <TextView
+                        android:text="00人"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/answer2_number_tv"
+                        android:layout_weight="1"
+                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"/>
+            </LinearLayout>
+            <TextView
+                    android:text="回答2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/answer2_tv" android:layout_marginLeft="10dp"
+                    android:layout_marginTop="2dp" android:layout_marginRight="10dp" android:textColor="#F2F2F2"/>
+            <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="30dp">
+                <TextView
+                        android:text="Your Choice:"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/textView20" android:layout_weight="1"
+                        android:textColor="#F2F2F2"/>
+                <Spinner
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:id="@+id/answer_spinner" android:layout_weight="1"/>
+            </LinearLayout>
+            <Button
+                    android:text="回答送信"
+                    android:background="@drawable/submit_button_style"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:id="@+id/answer_bt" android:textSize="12sp"
+                    android:layout_marginTop="50dp" android:layout_gravity="center_horizontal"
+                    android:layout_marginBottom="30dp"/>
         </LinearLayout>
-        <Button
-                android:text="回答送信"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:id="@+id/button2" android:textSize="12sp"
-                android:layout_marginTop="10dp" android:layout_gravity="center_horizontal"/>
-    </LinearLayout>
-
+    </ScrollView>
 </android.support.constraint.ConstraintLayout>

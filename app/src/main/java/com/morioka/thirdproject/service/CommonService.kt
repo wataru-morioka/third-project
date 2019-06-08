@@ -3,8 +3,16 @@ package com.morioka.thirdproject.service
 import android.app.PendingIntent.getActivity
 import android.arch.persistence.room.Room
 import android.content.Context
+import authen.AuthenGrpc
+import authen.LogoutRequest
+import authen.LogoutResult
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Target
+import io.grpc.ManagedChannelBuilder
+import io.grpc.stub.StreamObserver
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class CommonService {
     fun getStatusData(): ArrayList<Target> {
@@ -17,5 +25,42 @@ class CommonService {
 
     fun getDbContext(context: Context): AppDatabase {
         return Room.databaseBuilder(context, AppDatabase::class.java, "thirdProject2").build()
+    }
+
+    //ログアウト処理
+    fun logout(sessionId: String) {
+        println("ログアウト処理")
+        val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
+            .usePlaintext()
+            .build()
+        val agent = AuthenGrpc.newStub(authenServer)
+
+        val request = LogoutRequest.newBuilder()
+            .setSessionId(sessionId)
+            .build()
+
+        var result = false
+
+        runBlocking {
+            GlobalScope.launch {
+                agent.logout(request, object : StreamObserver<LogoutResult> {
+                    override fun onNext(reply: LogoutResult) {
+                        println("res : " + reply.result)
+                        result = reply.result
+                    }
+
+                    override fun onError(t: Throwable?) {
+                        authenServer.shutdown()
+                    }
+
+                    override fun onCompleted() {
+                        if (!result) {
+                            println("キャッシュクリアに失敗しました")
+                        }
+                        authenServer.shutdown()
+                    }
+                })
+            }.join()
+        }
     }
 }

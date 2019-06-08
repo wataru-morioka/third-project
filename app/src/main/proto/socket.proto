@@ -38,12 +38,12 @@ message InfoResult {
     int64 questionId = 3;
     int64 questionSeq = 4;
     bool determinationFlag = 5; 
-    int64 targetNumber = 6;
+    int32 targetNumber = 6;
     string question = 7;
     string answer1 = 8;
     string answer2 = 9;
-    int64 answer1number = 10;
-    int64 answer2number = 11;
+    int32 answer1number = 10;
+    int32 answer2number = 11;
     string timeLimit = 12;
 }
 

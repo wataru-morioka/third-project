@@ -69,14 +69,25 @@ class RegisterUserActivity : AppCompatActivity() {
         CheckMyInfoAsyncTask(db).execute()
     }
 
+    override fun onRestart() {
+        super.onRestart()
+        println("activity再開")
+        val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
+        //intent.putExtra("USER_ID", userId)
+        intent.putExtra("SESSION_ID", _sessionId)
+        intent.putExtra("STATUS", 0)
+        startActivity(intent)
+    }
+
+
     override fun onDestroy() {
         super.onDestroy()
 
         //セッションクリア
-        logout()
+        CommonService().logout(_sessionId as String)
         println("アプリ終了")
     }
-    
+
 
     //ログイン処理
     private fun login(db: AppDatabase) {
@@ -101,7 +112,7 @@ class RegisterUserActivity : AppCompatActivity() {
                 println("res : " + reply.sessionId + reply.status)
                 result = reply.result
                 sessionId = reply.sessionId
-                sessionId = reply.sessionId
+                _sessionId = reply.sessionId
                 status = reply.status
             }
 
@@ -124,37 +135,6 @@ class RegisterUserActivity : AppCompatActivity() {
                 startActivity(intent)
 
                 authenServer.shutdown()
-            }
-        })
-    }
-
-    //ログアウト処理
-    private fun logout() {
-        val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
-            .usePlaintext()
-            .build()
-        val agent = AuthenGrpc.newStub(authenServer)
-
-        val request = LogoutRequest.newBuilder()
-            .setSessionId(_sessionId)
-            .build()
-
-        var result = false
-
-        agent.logout(request, object : StreamObserver<LogoutResult> {
-            override fun onNext(reply: LogoutResult) {
-                println("res : " + reply.result)
-                result = reply.result
-            }
-
-            override fun onError(t: Throwable?) {
-                authenServer.shutdown()
-            }
-
-            override fun onCompleted() {
-                if (!result) {
-                    return
-                }
             }
         })
     }
@@ -195,14 +175,15 @@ class RegisterUserActivity : AppCompatActivity() {
                 _sessionId = reply.sessionId
             }
 
-            override fun onError(t: Throwable?) {}
+            override fun onError(t: Throwable?) {
+                authenServer.shutdown()
+            }
 
             override fun onCompleted() {
                 if (!result){
                     runOnUiThread {
                         Toast.makeText(this@RegisterUserActivity, "そのIDはすでに登録されています", Toast.LENGTH_SHORT).show()
                     }
-                    authenServer.shutdown()
                     return
                 }
 
