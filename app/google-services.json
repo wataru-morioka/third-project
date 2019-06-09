@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "527183403085",
+    "firebase_url": "https://thirdproject-6a377.firebaseio.com",
+    "project_id": "thirdproject-6a377",
+    "storage_bucket": "thirdproject-6a377.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527183403085:android:f5d9325cd6986eba",
+        "android_client_info": {
+          "package_name": "com.morioka.thirdproject"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "527183403085-csb6v6h7vd236hv4htirveajcfh9l7cv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBemCPgapV6FG0V43iggPcc8S6RI8VbMmY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "527183403085-csb6v6h7vd236hv4htirveajcfh9l7cv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

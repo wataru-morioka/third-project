@@ -5,8 +5,11 @@ import android.content.Intent
 import android.os.AsyncTask
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import authen.*
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.iid.FirebaseInstanceId
 import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.User
@@ -60,6 +63,8 @@ class RegisterUserActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val token = getToken()
+
         //TODO 初期画面表示→徐々に変化
         setContentView(R.layout.init)
 
@@ -67,6 +72,23 @@ class RegisterUserActivity : AppCompatActivity() {
 
         //ユーザ登録済みかどうか確認
         CheckMyInfoAsyncTask(db).execute()
+    }
+
+    //トークン取得
+    private fun getToken(): String? {
+        var token: String? = null
+        FirebaseInstanceId.getInstance().instanceId.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                println("トークン取得に失敗しました")
+                Log.w("FIREBASE", "getInstanceId failed", task.exception)
+                return@addOnCompleteListener
+            }
+
+            println("トークン取得")
+            Log.i("FIREBASE", "[CALLBACK] Token = ${task.result?.token}")
+            token = task.result?.token
+        }
+        return token
     }
 
     override fun onRestart() {
