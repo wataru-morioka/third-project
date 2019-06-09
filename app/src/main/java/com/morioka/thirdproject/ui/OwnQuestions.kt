@@ -78,9 +78,22 @@ class OwnQuestions : Fragment() {
 
         val adapter = RecycleOwnQuestioinsViewAdapter(othersQuestionList, object : RecycleOwnQuestioinsViewAdapter.ListListener {
             override fun onClickRow(tappedView: View, question: Question) {
+                //集計結果を受信していた場合、確認フラグ更新
+                if (question.determinationFlag) {
+                    runBlocking {
+                        GlobalScope.launch {
+                            //確認フラグ更新
+                            val updateQuestion = (_dbContext as AppDatabase).questionFactory().getQuestion(question.id)
+                            updateQuestion.confirmationFlag = true
+                            (_dbContext as AppDatabase).questionFactory().update(updateQuestion)
+                        }.join()
+                    }
+                }
                 val intent = Intent(activity, DetailOwnQuestionActivity::class.java)
                 intent.putExtra("QUESTION_ID", question.id)
                 startActivity(intent)
+
+                _listener!!.onFragmentInteraction(0)
             }
         })
 
@@ -108,6 +121,10 @@ class OwnQuestions : Fragment() {
         _listener = null
     }
 
+    override fun onStart() {
+        super.onStart()
+    }
+
     /**
      * This interface must be implemented by activities that contain this
      * fragment to allow an interaction in this fragment to be communicated
@@ -122,6 +139,7 @@ class OwnQuestions : Fragment() {
     interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         fun onFragmentInteraction(uri: Uri)
+        fun onFragmentInteraction(position: Int)
     }
 
     companion object {

@@ -37,8 +37,9 @@ class RecycleOthersQuestioinsViewAdapter (private val questionList: List<Questio
         val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(questionList[position].timeLimit)
 
         //期限内の場合、アイコン表示
-        if (timeLimit >= now) {
-            holder.ask_icon.setImageResource(android.R.drawable.ic_menu_edit)
+        if (questionList[position].myDecision == 0) {
+            holder.answer_icon.visibility = View.VISIBLE
+            holder.answer_icon.setImageResource(android.R.drawable.ic_menu_edit)
         }
 
         holder.itemView.setOnClickListener {

@@ -18,11 +18,11 @@ interface QuestionFactory {
     @Query("SELECT * FROM question where Id = :questionId")
     fun getQuestion(questionId: Long): Question
 
-    @Query("SELECT * FROM question where owner = :owner")
+    @Query("SELECT * FROM question where owner = :owner order by createdDateTime")
     fun getOthersQuestions(owner: String): List<Question>
 
     @Query("SELECT count(1) FROM question where questionSeq = :questionSeq")
-    fun getSameCount(questionSeq: Long): Int
+    fun getAlreadyCount(questionSeq: Long): Int
 
     @Delete
     fun delete(question: Question)

@@ -16,11 +16,22 @@
                       app:layout_constraintStart_toStartOf="parent" app:layout_constraintHorizontal_bias="0.5"
                       app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent"
                       android:background="#35383A">
-            <TextView
-                    android:text="Question"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/textView10" android:layout_marginLeft="10dp"
-                    android:layout_marginTop="10dp" android:textColor="#F1810E"/>
+            <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                <TextView
+                        android:text="Question"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/textView10"
+                        android:layout_marginLeft="10dp"
+                        android:layout_marginTop="10dp" android:textColor="#F1810E" android:textSize="12sp"/>
+                <TextView
+                        android:text="質問送信時間"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/send_date_tv" android:layout_weight="1"
+                        android:layout_marginLeft="10dp" android:layout_marginTop="10dp" android:textColor="#F1810E"/>
+            </LinearLayout>
             <TextView
                     android:text="質問内容"
                     android:layout_width="match_parent"
@@ -35,17 +46,20 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/textView12"
                         android:layout_marginLeft="10dp"
-                        android:layout_marginTop="10dp" android:textColor="#F1810E"/>
+                        android:layout_marginTop="10dp" android:textColor="#F1810E" android:textSize="12sp"/>
                 <TextView
                         android:text="00%"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/answer1_percentage_tv" android:layout_weight="1"
-                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"/>
+                        android:layout_height="wrap_content" android:id="@+id/answer1_percentage_tv"
+                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"
+                        android:layout_weight="1" android:visibility="invisible"/>
                 <TextView
                         android:text="00人"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/answer1_number_tv" android:layout_weight="1"
-                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"/>
+                        android:layout_height="wrap_content" android:id="@+id/answer1_number_tv"
+                        android:layout_weight="1"
+                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"
+                        android:visibility="invisible"/>
             </LinearLayout>
             <TextView
                     android:text="回答1"
@@ -61,29 +75,58 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/textView17"
                         android:layout_marginLeft="10dp"
-                        android:layout_marginTop="10dp" android:textColor="#F1810E"/>
+                        android:layout_marginTop="10dp" android:textColor="#F1810E" android:textSize="12sp"/>
                 <TextView
                         android:text="00%"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/answer2_percentage_tv" android:layout_weight="1"
-                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"/>
+                        android:layout_height="wrap_content" android:id="@+id/answer2_percentage_tv"
+                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"
+                        android:layout_weight="1" android:visibility="invisible"/>
                 <TextView
                         android:text="00人"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/answer2_number_tv" android:layout_weight="1"
-                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"/>
+                        android:layout_height="wrap_content" android:id="@+id/answer2_number_tv"
+                        android:layout_weight="1"
+                        android:layout_marginTop="10dp" android:layout_marginLeft="10dp" android:textColor="#F1810E"
+                        android:visibility="invisible"/>
             </LinearLayout>
             <TextView
                     android:text="回答2"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:id="@+id/answer2_tv" android:layout_marginLeft="10dp"
                     android:layout_marginTop="2dp" android:layout_marginRight="10dp" android:textColor="#F2F2F2"/>
+            <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                <TextView
+                        android:text="対象人数"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/textView6" android:layout_weight="1"
+                        android:textColor="#F1810E" android:layout_marginTop="10dp" android:layout_marginLeft="10dp"
+                        android:textSize="12sp"/>
+            </LinearLayout>
             <TextView
-                    android:text="集計待ち"
+                    android:text="人数"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/target_number_tv" android:layout_marginLeft="10dp"
+                    android:layout_marginTop="2dp" android:layout_marginRight="10dp" android:textColor="#F2F2F2"/>
+            <TextView
+                    android:text="制限時間"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/textView13" android:layout_marginLeft="10dp"
+                    android:layout_marginTop="10dp" android:textSize="12sp" android:textColor="#F1810E"/>
+            <TextView
+                    android:text="分単位"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/time_period_tv" android:layout_marginLeft="10dp"
+                    android:layout_marginTop="2dp" android:layout_marginRight="10dp" android:textColor="#F2F2F2"/>
+            <TextView
+                    android:text="回答受付中"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/aggregater_tv"
-                    android:layout_gravity="center_horizontal" android:layout_marginTop="20dp"
-                    android:textColor="#1F7CE4" android:layout_marginBottom="30dp"/>
+                    android:layout_height="wrap_content" android:id="@+id/aggregator_tv"
+                    android:layout_gravity="center_horizontal" android:layout_marginTop="30dp"
+                    android:textColor="#F2DE30" android:layout_marginBottom="30dp"/>
         </LinearLayout>
     </ScrollView>
 </android.support.constraint.ConstraintLayout>

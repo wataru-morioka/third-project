@@ -19,8 +19,6 @@ import com.google.gson.Gson
 import com.morioka.thirdproject.model.*
 import com.morioka.thirdproject.model.Target
 import com.rabbitmq.client.ConnectionFactory
-import kotlinx.serialization.*
-import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -141,20 +139,18 @@ class CreateQuestion : Fragment() {
 
         runBlocking {
             GlobalScope.launch {
-                val factory = ConnectionFactory()
-                factory.host = "10.0.2.2"
-                val connection = factory.newConnection()
-                val channel = connection.createChannel()
-
-                //TODO エラー処理
-                channel.queueDeclare(QUEUE_NAME, false, false, false, null)
-
                 //DBに登録し、その際のquestionIdを取得
                 val questionId = registerQuestion(selectedTarget.targetNumber)
 
+                val factory = ConnectionFactory()
+                factory.host = "10.0.2.2"
+                //TODO エラー処理
+                val connection = factory.newConnection()
+                val channel = connection.createChannel()
+
                 //メッセージ作成
                 val questionRequest = QuestionRequest(
-                    _userId as String,
+                    _userId!!,
                     questionId,
                     question_tv.text.toString(),
                     answer1_tv.text.toString(),
@@ -166,31 +162,45 @@ class CreateQuestion : Fragment() {
                 //クラスオベジェクトをJSON文字列にデシリアライズ
                 val message = Gson().toJson(questionRequest)
 
-                channel.txSelect()
+                channel.queueDeclare(QUEUE_NAME, false, false, false, null)
+                try {
+                    channel.txSelect()
 
-                //TODO エラー処理
-                channel.basicPublish("", QUEUE_NAME, null, message.toByteArray(charset("UTF-8")))
+                    channel.basicPublish("", QUEUE_NAME, null, message.toByteArray(charset("UTF-8")))
 
-                channel.txCommit()
+                    channel.txCommit()
 
-                println(" [x] Sent '$message'")
+                    println("キューメッセージ送信に成功しました")
+                    println(" [x] Sent '$message'")
+                    _listener?.onFragmentInteraction(2)
 
-                channel.close()
-                connection.close()
+                    //画面をクリア
+                    activity!!.runOnUiThread{
+                        //TODO リセット処理
+                        question_tv.setText("")
+                        answer1_tv.setText("")
+                        answer2_tv.setText("")
+                        Toast.makeText(activity, "送信が完了しました", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    println("キューメッセージ送信に失敗しました")
+
+                    channel.txRollback()
+
+                    val deleteQuestion = (_dbContext as AppDatabase).questionFactory().getQuestion(questionId)
+                    (_dbContext as AppDatabase).questionFactory().delete(deleteQuestion)
+
+                    //画面をクリア
+                    activity!!.runOnUiThread{
+                        Toast.makeText(activity, "キューメッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
+                    }
+                } finally {
+                    _dialog.dismiss()
+
+                    channel.close()
+                    connection.close()
+                }
             }.join()
-        }
-
-        _listener?.onFragmentInteraction(2)
-        //TODO リセット処理
-        question_tv.setText("")
-        answer1_tv.setText("")
-        answer2_tv.setText("")
-
-        _dialog.dismiss()
-
-        //画面をクリア
-        activity?.runOnUiThread{
-            Toast.makeText(activity, "送信が完了しました", Toast.LENGTH_SHORT).show()
         }
     }
 

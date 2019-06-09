@@ -12,13 +12,14 @@
     <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal" android:background="#2D3032">
+            android:orientation="horizontal" android:background="#2D3032" android:minHeight="50dp">
 
         <ImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@android:drawable/btn_star_big_on" android:layout_marginLeft="10dp"
-                android:layout_marginTop="10dp" android:layout_marginBottom="10dp" android:id="@+id/confirm_icon"/>
+                android:id="@+id/confirm_icon"
+                android:layout_gravity="center_vertical"/>
 
         <LinearLayout
                 android:layout_width="wrap_content"
@@ -29,16 +30,15 @@
             <TextView
                     android:id="@+id/row_title"
                     android:layout_width="wrap_content"
-                    android:layout_height="0dp"
-                    android:layout_weight="0.5"
+                    android:layout_height="wrap_content"
                     android:text="質問：" android:textColor="#F2F2F2" android:textSize="10sp"/>
 
             <TextView
                     android:id="@+id/own_question_tv"
                     android:layout_width="wrap_content"
-                    android:layout_height="0dp"
-                    android:layout_weight="0.5"
-                    android:text="詳細ですよ詳細ですよ詳細ですよ詳細です" android:maxLines="3" android:textColor="#F2F2F2"
+                    android:layout_height="wrap_content"
+                    android:text="詳細ですよ詳細ですよ詳細ですよ詳細ですghrehgaerhgrehahaerhareshaerhraehraeshrehaerhraeshaerharehaerhaehaeaharehraehraeharehaehrhahreahagfkfkufkfkfkfkyufkyufufyfkyehaehaehaehaehaerha"
+                    android:maxLines="2" android:textColor="#F2F2F2"
                     android:textSize="12sp"/>
 
 
@@ -48,8 +48,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@android:drawable/ic_menu_help"
-                android:layout_marginTop="10dp" android:layout_marginBottom="10dp" android:layout_marginRight="5dp"
-                android:id="@+id/aggregater_icon"/>
+                android:layout_marginRight="5dp"
+                android:id="@+id/aggregator_icon" android:layout_gravity="center_vertical"/>
 
     </LinearLayout>
 </android.support.v7.widget.CardView>

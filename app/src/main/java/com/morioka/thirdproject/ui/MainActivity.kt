@@ -1,9 +1,10 @@
 package com.morioka.thirdproject.ui
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
-import android.os.AsyncTask
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.Fragment
@@ -11,8 +12,6 @@ import io.grpc.ManagedChannelBuilder
 import kotlinx.android.synthetic.main.activity_main.*
 import android.support.v4.view.ViewPager
 import android.widget.Toast
-import authen.LoginRequest
-import authen.LoginResult
 import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Question
@@ -20,31 +19,35 @@ import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.service.CommonService
 import com.morioka.thirdproject.service.TabsPagerAdapter
 import io.grpc.stub.StreamObserver
-import kotlinx.android.synthetic.main.register_user.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.android.synthetic.main.activity_main.view.*
 import socket.*
 import java.text.SimpleDateFormat
 import java.util.*
-
+import android.support.v4.content.LocalBroadcastManager
 
 class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, CreateQuestion.OnFragmentInteractionListener,
     MemberStatus.OnFragmentInteractionListener, OthersQuestions.OnFragmentInteractionListener,
     OwnQuestions.OnFragmentInteractionListener {
     private var _dbContext: AppDatabase? = null
     private var _sessionId: String? = null
+    private var _status: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         //ユーザ情報取得
-        //val userId = intent.getStringExtra("USER_ID")
-        val sessionId = intent.getStringExtra("SESSION_ID")
-        _sessionId = sessionId
-        val status = intent.getIntExtra("STATUS", -1)
+        if (savedInstanceState != null) {
+            println("MainActivityが復元されました")
+            _sessionId = savedInstanceState.getString("SESSION_ID")
+            _status = savedInstanceState.getInt("STATUS")
+        } else {
+            _sessionId = intent.getStringExtra("SESSION_ID")
+            _status = intent.getIntExtra("STATUS", -1)
+        }
+
         var user = User()
 
         _dbContext = CommonService().getDbContext(this)
@@ -52,7 +55,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         runBlocking {
             GlobalScope.launch {
                 user = (_dbContext as AppDatabase).userFactory().getMyInfo()
-                user.status = status
+                user.status = _status
                 (_dbContext as AppDatabase).userFactory().update(user)
             }.join()
         }
@@ -63,25 +66,30 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
         //tabとpagerを紐付ける
         pager.addOnPageChangeListener(this@MainActivity)
-        setTabLayout(user, sessionId)
-//
-//        while (true) {
-//            Thread.sleep(2000)
-//            println("確認")
-//        }
+        setTabLayout(user, _sessionId!!)
     }
 
     override fun onRestart() {
         super.onRestart()
         println("activity再開")
-
+        reViewFragment(0)
+        reViewFragment(1)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        println("MainActivityが破棄されました")
+    }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("SESSION_ID", _sessionId)
+        outState.putInt("STATUS", _status)
+    }
 
     //タブの設定
-    private fun setTabLayout(user: User, sessioniId: String) {
-        val adapter = TabsPagerAdapter(supportFragmentManager, this, user, sessioniId)
+    private fun setTabLayout(user: User, sessionId: String) {
+        val adapter = TabsPagerAdapter(supportFragmentManager, this, user, sessionId)
         pager.adapter = adapter
         tabs.setupWithViewPager(pager)
 //        for (i in 0 until adapter.count) {
@@ -175,8 +183,22 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         //画面を再描画
         runOnUiThread {
             when (reply.owner) {
-                "own" ->  onFragmentInteraction(0)
-                "others" ->  onFragmentInteraction(1)
+                "own" ->{
+                    onFragmentInteraction(0)
+
+                    // Local Broadcast で発信する（activityも再描画させる）
+                    val messageIntent = Intent("own")
+//                    messageIntent.putExtra("Message", time)
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
+                }
+                "others" -> {
+                    onFragmentInteraction(1)
+
+                    // Local Broadcast で発信する（activityも再描画させる）
+                    val messageIntent = Intent("others")
+//                    messageIntent.putExtra("Message", time)
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
+                }
                 else -> {}
             }
         }
@@ -216,7 +238,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         println("新着他人の質問を登録")
         val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
 
-        val count = (_dbContext as AppDatabase).questionFactory().getSameCount(reply.questionSeq)
+        val count = (_dbContext as AppDatabase).questionFactory().getAlreadyCount(reply.questionSeq)
         if (count != 0) {
             return
         }
@@ -236,6 +258,11 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         //相手の質問画面を再描画
         runOnUiThread {
             onFragmentInteraction(1)
+
+            // Local Broadcast で発信する（activityも再描画させる）
+            val messageIntent = Intent("others")
+//                    messageIntent.putExtra("Message", time)
+            LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
         }
 
         val request = DoneRequest.newBuilder()
@@ -268,12 +295,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         })
     }
 
-    override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
-    override fun onPageSelected(position: Int) {}
-    override fun onPageScrollStateChanged(state: Int) {}
-
-    // Fragmentの再描画（コールバック）
-    override fun onFragmentInteraction(position: Int) {
+    //Fragmentの再描画
+    private fun reViewFragment(position: Int){
         //アダプターを取得
         val adapter = pager.adapter
         //instantiateItem()で今のFragmentを取得
@@ -285,7 +308,14 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         transaction.commit()
     }
 
+    override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
+    override fun onPageSelected(position: Int) {}
+    override fun onPageScrollStateChanged(state: Int) {}
 
+    // Fragmentの再描画（コールバック）
+    override fun onFragmentInteraction(position: Int) {
+        reViewFragment(position)
+    }
 
     // Fragmentからのコールバックメソッド
     override fun onFragmentInteraction(message: String) {
