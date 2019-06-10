@@ -1,4 +1,4 @@
-package com.morioka.thirdproject.service
+package com.morioka.thirdproject.adapter
 
 import android.support.v7.widget.RecyclerView
 import android.util.Log
@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.Question
+import com.morioka.thirdproject.viewholder.OthersQuestionViewHolder
 import java.text.SimpleDateFormat
 import java.util.*
 

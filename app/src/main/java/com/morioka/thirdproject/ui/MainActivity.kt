@@ -16,8 +16,8 @@ import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Question
 import com.morioka.thirdproject.model.User
-import com.morioka.thirdproject.service.CommonService
-import com.morioka.thirdproject.service.TabsPagerAdapter
+import com.morioka.thirdproject.common.CommonService
+import com.morioka.thirdproject.adapter.TabsPagerAdapter
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -30,6 +30,7 @@ import android.util.Log
 import authen.AuthenGrpc
 import authen.LoginRequest
 import authen.LoginResult
+import com.morioka.thirdproject.common.SingletonService
 
 class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, CreateQuestion.OnFragmentInteractionListener,
     MemberStatus.OnFragmentInteractionListener, OthersQuestions.OnFragmentInteractionListener,
@@ -42,7 +43,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val messageFilter = IntentFilter("update_token")
+        val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
         // Broadcast を受け取る BroadcastReceiver を設定
         // LocalBroadcast の設定
         LocalBroadcastManager.getInstance(this).registerReceiver(UpdateTokenReceiver(), messageFilter)
@@ -50,11 +51,11 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         //ユーザ情報取得
         if (savedInstanceState != null) {
             println("MainActivityが復元されました")
-            _sessionId = savedInstanceState.getString("SESSION_ID")
-            _status = savedInstanceState.getInt("STATUS")
+            _sessionId = savedInstanceState.getString(SingletonService.SESSION_ID)
+            _status = savedInstanceState.getInt(SingletonService.STATUS)
         } else {
-            _sessionId = intent.getStringExtra("SESSION_ID")
-            _status = intent.getIntExtra("STATUS", -1)
+            _sessionId = intent.getStringExtra(SingletonService.SESSION_ID)
+            _status = intent.getIntExtra(SingletonService.STATUS, -1)
         }
 
         var user = User()
@@ -92,8 +93,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putString("SESSION_ID", _sessionId)
-        outState.putInt("STATUS", _status)
+        outState.putString(SingletonService.SESSION_ID, _sessionId)
+        outState.putInt(SingletonService.STATUS, _status)
     }
 
     //タブの設定
@@ -109,7 +110,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
     //サーバとセッション確立
     private fun createSession() {
-        val socketServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50050)
+        val socketServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
             .usePlaintext()
             .build()
         val agent = SocketGrpc.newStub(socketServer)
@@ -130,11 +131,11 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
                 }
 
                 when (reply.owner) {
-                    "own" -> {
+                    SingletonService.OWN -> {
                         //自分の質問の集計結果を登録
                         registerAggregationResult(reply, agent)
                     }
-                    "others" -> {
+                    SingletonService.OTHERS -> {
                         if (reply.determinationFlag) {
                             //他人の質問の集計結果を登録
                             registerAggregationResult(reply, agent)
@@ -175,8 +176,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
         val question: Question
         when (reply.owner) {
-            "own" ->  question = (_dbContext as AppDatabase).questionFactory().getQuestion(reply.questionId)
-            "others" ->  question = (_dbContext as AppDatabase).questionFactory().getQuestion(reply.questionSeq)
+            SingletonService.OWN ->  question = (_dbContext as AppDatabase).questionFactory().getQuestion(reply.questionId)
+            SingletonService.OTHERS ->  question = (_dbContext as AppDatabase).questionFactory().getQuestion(reply.questionSeq)
             else -> return
         }
 
@@ -192,19 +193,19 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         //画面を再描画
         runOnUiThread {
             when (reply.owner) {
-                "own" ->{
+                SingletonService.OWN ->{
                     onFragmentInteraction(0)
 
                     // Local Broadcast で発信する（activityも再描画させる）
-                    val messageIntent = Intent("own")
+                    val messageIntent = Intent(SingletonService.OWN)
 //                    messageIntent.putExtra("Message", time)
                     LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
                 }
-                "others" -> {
+                SingletonService.OTHERS -> {
                     onFragmentInteraction(1)
 
                     // Local Broadcast で発信する（activityも再描画させる）
-                    val messageIntent = Intent("others")
+                    val messageIntent = Intent(SingletonService.OTHERS)
 //                    messageIntent.putExtra("Message", time)
                     LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
                 }
@@ -269,7 +270,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             onFragmentInteraction(1)
 
             // Local Broadcast で発信する（activityも再描画させる）
-            val messageIntent = Intent("others")
+            val messageIntent = Intent(SingletonService.OTHERS)
 //                    messageIntent.putExtra("Message", time)
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
         }
@@ -314,7 +315,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         val transaction = supportFragmentManager.beginTransaction()
         transaction.detach(fragment)
         transaction.attach(fragment)
-        transaction.commit()
+        transaction.commitAllowingStateLoss()
     }
 
     override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
@@ -342,10 +343,10 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             Log.d("DataReceiver", "onReceive")
 
             // Broadcast されたメッセージを取り出す
-            val token = intent.getStringExtra("TOKEN")
+            val token = intent.getStringExtra(SingletonService.TOKEN)
             val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
 
-            val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
+            val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
                 .usePlaintext()
                 .build()
             val agent = AuthenGrpc.newStub(authenServer)

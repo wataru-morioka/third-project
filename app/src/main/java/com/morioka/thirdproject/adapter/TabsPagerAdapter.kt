@@ -1,23 +1,14 @@
-package com.morioka.thirdproject.service
+package com.morioka.thirdproject.adapter
 
 import android.content.Context
-import android.os.Bundle
-import android.support.design.widget.TabLayout
 import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentActivity
 import android.support.v4.app.FragmentManager
 import android.support.v4.app.FragmentStatePagerAdapter
-import android.view.LayoutInflater
-import android.view.View
-import android.widget.ImageView
-import android.widget.TextView
 import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.ui.CreateQuestion
 import com.morioka.thirdproject.ui.MemberStatus
 import com.morioka.thirdproject.ui.OthersQuestions
 import com.morioka.thirdproject.ui.OwnQuestions
-import android.view.ViewGroup
-import android.support.v4.view.ViewPager
 
 class TabsPagerAdapter(fm: FragmentManager, private val context: Context,private val user: User, private val sessionId: String) : FragmentStatePagerAdapter(fm) {
     private val pageTitle = arrayOf("自分の質問", "他人の質問", "新規作成", "会員情報")

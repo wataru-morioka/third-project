@@ -15,8 +15,9 @@ import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Target
 import com.morioka.thirdproject.model.User
-import com.morioka.thirdproject.service.CommonService
-import com.morioka.thirdproject.service.TargetSpinnerAdapter
+import com.morioka.thirdproject.common.CommonService
+import com.morioka.thirdproject.adapter.TargetSpinnerAdapter
+import com.morioka.thirdproject.common.SingletonService
 import io.grpc.ManagedChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.android.synthetic.main.fragment_member_status.*
@@ -30,9 +31,9 @@ import socket.UpdateRequest
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "SESSION_ID"
-private const val ARG_PARAM2 = "STATUS"
-private const val ARG_PARAM3 = "USER_ID"
+private const val ARG_PARAM1 = SingletonService.SESSION_ID
+private const val ARG_PARAM2 = SingletonService.STATUS
+private const val ARG_PARAM3 = SingletonService.USER_ID
 
 /**
  * A simple [Fragment] subclass.
@@ -134,8 +135,9 @@ class MemberStatus : Fragment() {
         }
     }
 
+    //ステータス更新処理
     private fun updateStatus(sessionId: String, status: Int){
-        val socketServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50050)
+        val socketServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
             .usePlaintext()
             .build()
         val agent = SocketGrpc.newStub(socketServer)
@@ -156,7 +158,7 @@ class MemberStatus : Fragment() {
             override fun onError(t: Throwable?) {
                 _dialog.dismiss()
                 activity?.runOnUiThread{
-                    Toast.makeText(activity, "更新が完了しました", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, "更新に失敗しました", Toast.LENGTH_SHORT).show()
                 }
                 socketServer.shutdown()
             }

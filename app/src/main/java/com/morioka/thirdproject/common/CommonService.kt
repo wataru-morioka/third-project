@@ -1,6 +1,5 @@
-package com.morioka.thirdproject.service
+package com.morioka.thirdproject.common
 
-import android.app.PendingIntent.getActivity
 import android.arch.persistence.room.Room
 import android.content.Context
 import authen.AuthenGrpc
@@ -15,6 +14,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class CommonService {
+//    val host: String = "10.0.2.2"
+//    val rabbitmqPort = "50030"
+//    val grpcPort = 50050
+//    val authenPort = 50030
+
     fun getStatusData(): ArrayList<Target> {
         val statusList = ArrayList<Target>()
         statusList.add(Target(0, "bronze", 10))
@@ -30,7 +34,7 @@ class CommonService {
     //ログアウト処理
     fun logout(sessionId: String) {
         println("ログアウト処理")
-        val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
+        val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             .usePlaintext()
             .build()
         val agent = AuthenGrpc.newStub(authenServer)

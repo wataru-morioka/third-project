@@ -1,6 +1,5 @@
 package com.morioka.thirdproject.ui
 
-import android.arch.persistence.room.Room
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -12,16 +11,15 @@ import android.support.v4.content.LocalBroadcastManager
 import android.util.Log
 import android.widget.Toast
 import authen.*
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.iid.FirebaseInstanceId
 import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.User
-import com.morioka.thirdproject.service.CommonService
+import com.morioka.thirdproject.common.CommonService
+import com.morioka.thirdproject.common.SingletonService
 import io.grpc.ManagedChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.android.synthetic.main.register_user.*
-import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -29,6 +27,7 @@ class RegisterUserActivity : AppCompatActivity() {
     private var _sessionId: String? = null
     private var _token: String? = null
     private var _dbContext: AppDatabase? = null
+    private  var _status: Int = 0
 
     //初期画面条件分岐
     inner class CheckMyInfoAsyncTask : AsyncTask<Void, Int, Boolean>() {
@@ -74,7 +73,7 @@ class RegisterUserActivity : AppCompatActivity() {
             _token = ""
         }
 
-        val messageFilter = IntentFilter("update_token")
+        val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
         // Broadcast を受け取る BroadcastReceiver を設定
         // LocalBroadcast の設定
         LocalBroadcastManager.getInstance(this).registerReceiver(UpdateTokenReceiver(), messageFilter)
@@ -108,8 +107,8 @@ class RegisterUserActivity : AppCompatActivity() {
         println("activity再開")
         val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
         //intent.putExtra("USER_ID", userId)
-        intent.putExtra("SESSION_ID", _sessionId)
-        intent.putExtra("STATUS", 0)
+        intent.putExtra(SingletonService.SESSION_ID, _sessionId)
+        intent.putExtra(SingletonService.STATUS, _status)
         startActivity(intent)
     }
 
@@ -132,7 +131,7 @@ class RegisterUserActivity : AppCompatActivity() {
 
         val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
 
-        val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
+        val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             .usePlaintext()
             .build()
         val agent = AuthenGrpc.newStub(authenServer)
@@ -144,16 +143,13 @@ class RegisterUserActivity : AppCompatActivity() {
             .build()
 
         var result = false
-        var sessionId: String? = null
-        var status = 0
 
         agent.login(request, object : StreamObserver<LoginResult> {
             override fun onNext(reply: LoginResult) {
                 println("res : " + reply.sessionId + reply.status)
                 result = reply.result
-                sessionId = reply.sessionId
                 _sessionId = reply.sessionId
-                status = reply.status
+                _status = reply.status
             }
 
             override fun onError(t: Throwable?) {
@@ -170,8 +166,8 @@ class RegisterUserActivity : AppCompatActivity() {
 
                 val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
                 //intent.putExtra("USER_ID", user.userId)
-                intent.putExtra("SESSION_ID",sessionId)
-                intent.putExtra("STATUS", status)
+                intent.putExtra(SingletonService.SESSION_ID, _sessionId)
+                intent.putExtra(SingletonService.STATUS, _status)
                 startActivity(intent)
 
                 authenServer.shutdown()
@@ -183,7 +179,7 @@ class RegisterUserActivity : AppCompatActivity() {
     private fun registerUser() {
         println("ユーザ登録処理開始")
         //TODO 暗号化
-        val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
+        val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             .usePlaintext()
             .build()
 
@@ -204,7 +200,6 @@ class RegisterUserActivity : AppCompatActivity() {
 
         var result = false
         var password = ""
-        var sessionId: String? = null
 
         //サーバに非同期通信（ユーザ登録依頼）
         agent.register(request, object : StreamObserver<RegistrationResult> {
@@ -213,7 +208,6 @@ class RegisterUserActivity : AppCompatActivity() {
                 result = reply.result
                 //TODO パスワード暗号化
                 password = reply.password
-                sessionId = reply.sessionId
                 _sessionId = reply.sessionId
             }
 
@@ -243,8 +237,8 @@ class RegisterUserActivity : AppCompatActivity() {
 
                 val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
                 //intent.putExtra("USER_ID", userId)
-                intent.putExtra("SESSION_ID", sessionId)
-                intent.putExtra("STATUS", 0)
+                intent.putExtra(SingletonService.SESSION_ID, _sessionId)
+                intent.putExtra(SingletonService.STATUS, 0)
                 startActivity(intent)
 
                 authenServer.shutdown()
@@ -258,7 +252,7 @@ class RegisterUserActivity : AppCompatActivity() {
             Log.d("DataReceiver", "onReceive")
 
             // Broadcast されたメッセージを取り出す
-            _token = intent.getStringExtra("TOKEN")
+            _token = intent.getStringExtra(SingletonService.TOKEN)
         }
     }
 }

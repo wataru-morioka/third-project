@@ -13,7 +13,8 @@ import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Question
 import com.morioka.thirdproject.model.User
-import com.morioka.thirdproject.service.CommonService
+import com.morioka.thirdproject.common.CommonService
+import com.morioka.thirdproject.common.SingletonService
 import kotlinx.android.synthetic.main.detail_own_question.*
 import kotlinx.android.synthetic.main.detail_own_question.answer1_number_tv
 import kotlinx.android.synthetic.main.detail_own_question.answer1_percentage_tv
@@ -29,20 +30,30 @@ import java.util.*
 
 class DetailOwnQuestionActivity: AppCompatActivity() {
     private var _dbContext: AppDatabase? = null
+    private var _questionId: Long = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.detail_own_question)
 
-        val questionId = intent.getLongExtra("QUESTION_ID", 0)
+        if (savedInstanceState != null) {
+            _questionId = savedInstanceState.getLong(SingletonService.QUESTION_ID)
+        } else {
+            _questionId = intent.getLongExtra(SingletonService.QUESTION_ID, 0)
+        }
 
         //画面描画
-        setScreen(questionId)
+        setScreen(_questionId)
 
-        val messageFilter = IntentFilter("own")
+        val messageFilter = IntentFilter(SingletonService.OWN)
         // Broadcast を受け取る BroadcastReceiver を設定
         // LocalBroadcast の設定
-        LocalBroadcastManager.getInstance(this).registerReceiver(UpdateInfoReceiver(questionId), messageFilter)
+        LocalBroadcastManager.getInstance(this).registerReceiver(UpdateInfoReceiver(_questionId), messageFilter)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putLong(SingletonService.QUESTION_ID, _questionId)
     }
 
     //画面描画
@@ -97,11 +108,11 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         answer1_number_tv.text = getString(R.string.answer_number, question!!.answer1number)
         answer2_number_tv.text= getString(R.string.answer_number, question!!.answer2number)
 
-        val answer1_percentage = question!!.answer1number / (question!!.answer1number + question!!.answer2number)
-        val answer2_percentage = 100 - answer1_percentage
+        val answer1percentage = question!!.answer1number / (question!!.answer1number + question!!.answer2number)
+        val answer2percentage = 100 - answer1percentage
 
-        answer1_percentage_tv.text = getString(R.string.answer_percentage, answer1_percentage)
-        answer2_percentage_tv.text = getString(R.string.answer_percentage, answer2_percentage)
+        answer1_percentage_tv.text = getString(R.string.answer_percentage, answer1percentage)
+        answer2_percentage_tv.text = getString(R.string.answer_percentage, answer2percentage)
     }
 
     //データ更新通知を検知

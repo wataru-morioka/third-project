@@ -6,6 +6,7 @@ import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.google.firebase.iid.FirebaseInstanceId
+import com.morioka.thirdproject.common.SingletonService
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String?) {
@@ -28,7 +29,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         // Local Broadcast で発信する（activityも再描画させる）
-        val messageIntent = Intent("update_token")
+        val messageIntent = Intent(SingletonService.UPDATE_TOKEN)
         messageIntent.putExtra("TOKEN", updateToken)
         LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
     }

@@ -1,4 +1,4 @@
-package com.morioka.thirdproject.service
+package com.morioka.thirdproject.adapter
 
 import android.content.Context
 import android.graphics.Color
@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.TextView
-import com.morioka.thirdproject.model.Target
 
 class AnswerSpinnerAdapter : ArrayAdapter<Int> {
     constructor(context: Context) : super(context, android.R.layout.simple_spinner_item) {

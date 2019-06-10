@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.support.v4.app.Fragment
-import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.widget.LinearLayoutManager
 import android.view.LayoutInflater
 import android.view.View
@@ -14,8 +13,9 @@ import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Question
 import com.morioka.thirdproject.model.User
-import com.morioka.thirdproject.service.CommonService
-import com.morioka.thirdproject.service.RecycleOthersQuestioinsViewAdapter
+import com.morioka.thirdproject.common.CommonService
+import com.morioka.thirdproject.adapter.RecycleOthersQuestioinsViewAdapter
+import com.morioka.thirdproject.common.SingletonService
 import kotlinx.android.synthetic.main.fragment_others_questions.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -24,9 +24,9 @@ import kotlinx.coroutines.runBlocking
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "SESSION_ID"
-private const val ARG_PARAM2 = "STATUS"
-private const val ARG_PARAM3 = "USER_ID"
+private const val ARG_PARAM1 = SingletonService.SESSION_ID
+private const val ARG_PARAM2 = SingletonService.STATUS
+private const val ARG_PARAM3 = SingletonService.USER_ID
 
 /**
  * A simple [Fragment] subclass.
@@ -79,28 +79,30 @@ class OthersQuestions : Fragment() {
 
         runBlocking {
             GlobalScope.launch {
-                othersQuestionList = (_dbContext as AppDatabase).questionFactory().getOthersQuestions("others")
+                othersQuestionList = (_dbContext as AppDatabase).questionFactory().getOthersQuestions(SingletonService.OTHERS)
             }.join()
         }
 
-        val adapter = RecycleOthersQuestioinsViewAdapter(othersQuestionList, object : RecycleOthersQuestioinsViewAdapter.ListListener {
-            override fun onClickRow(tappedView: View, question: Question) {
-                runBlocking {
-                    GlobalScope.launch {
-                        //確認フラグ更新
-                        val updateQuestion = (_dbContext as AppDatabase).questionFactory().getQuestion(question.id)
-                        updateQuestion.confirmationFlag = true
-                        (_dbContext as AppDatabase).questionFactory().update(updateQuestion)
-                    }.join()
+        val adapter = RecycleOthersQuestioinsViewAdapter(
+            othersQuestionList,
+            object : RecycleOthersQuestioinsViewAdapter.ListListener {
+                override fun onClickRow(tappedView: View, question: Question) {
+                    runBlocking {
+                        GlobalScope.launch {
+                            //確認フラグ更新
+                            val updateQuestion = (_dbContext as AppDatabase).questionFactory().getQuestion(question.id)
+                            updateQuestion.confirmationFlag = true
+                            (_dbContext as AppDatabase).questionFactory().update(updateQuestion)
+                        }.join()
+                    }
+
+                    val intent = Intent(activity, DetailOthersQuestionActivity::class.java)
+                    intent.putExtra(SingletonService.QUESTION_ID, question.id)
+                    startActivity(intent)
+
+                    _listener!!.onFragmentInteraction(1)
                 }
-
-                val intent = Intent(activity, DetailOthersQuestionActivity::class.java)
-                intent.putExtra("QUESTION_ID", question.id)
-                startActivity(intent)
-
-                _listener!!.onFragmentInteraction(1)
-            }
-        })
+            })
 
         recycle_others_view.setHasFixedSize(true)
         recycle_others_view.layoutManager = LinearLayoutManager(activity)

@@ -8,14 +8,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.morioka.thirdproject.R
-import com.morioka.thirdproject.service.CommonService
-import com.morioka.thirdproject.service.TargetSpinnerAdapter
+import com.morioka.thirdproject.common.CommonService
+import com.morioka.thirdproject.adapter.TargetSpinnerAdapter
 import kotlinx.android.synthetic.main.fragment_create_question.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import android.widget.*
 import com.google.gson.Gson
+import com.morioka.thirdproject.common.SingletonService
 import com.morioka.thirdproject.model.*
 import com.morioka.thirdproject.model.Target
 import com.rabbitmq.client.ConnectionFactory
@@ -26,10 +27,10 @@ import kotlin.collections.ArrayList
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "SESSION_ID"
-private const val ARG_PARAM2 = "STATUS"
-private const val ARG_PARAM3 = "USER_ID"
-private const val QUEUE_NAME = "question"
+private const val ARG_PARAM1 = SingletonService.SESSION_ID
+private const val ARG_PARAM2 = SingletonService.STATUS
+private const val ARG_PARAM3 = SingletonService.USER_ID
+private const val QUEUE_NAME = SingletonService.QUESTION
 
 /**
  * A simple [Fragment] subclass.
@@ -85,7 +86,7 @@ class CreateQuestion : Fragment() {
             }.join()
         }
 
-        val targetList = CommonService().getStatusData().filter{x -> x.status <= _status} as ArrayList<Target>
+        val targetList = CommonService().getStatusData().filter{ x -> x.status <= _status} as ArrayList<Target>
 
         val adapter = TargetSpinnerAdapter(context!!, targetList)
         target_spinner.adapter = adapter
@@ -143,7 +144,7 @@ class CreateQuestion : Fragment() {
                 val questionId = registerQuestion(selectedTarget.targetNumber)
 
                 val factory = ConnectionFactory()
-                factory.host = "10.0.2.2"
+                factory.host = SingletonService.HOST
                 //TODO エラー処理
                 val connection = factory.newConnection()
                 val channel = connection.createChannel()
@@ -207,7 +208,7 @@ class CreateQuestion : Fragment() {
     //DBに登録し、その際のquestionIdを取得
     private fun registerQuestion(targetNumber: Int): Long{
         val question = Question()
-        question.owner = "own"
+        question.owner = SingletonService.OWN
         question.question = question_tv.text.toString()
         question.answer1 = answer1_tv.text.toString()
         question.answer2 = answer2_tv.text.toString()

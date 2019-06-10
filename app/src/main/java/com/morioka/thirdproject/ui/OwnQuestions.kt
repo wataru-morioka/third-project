@@ -13,9 +13,9 @@ import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Question
 import com.morioka.thirdproject.model.User
-import com.morioka.thirdproject.service.CommonService
-import com.morioka.thirdproject.service.RecycleOthersQuestioinsViewAdapter
-import com.morioka.thirdproject.service.RecycleOwnQuestioinsViewAdapter
+import com.morioka.thirdproject.common.CommonService
+import com.morioka.thirdproject.adapter.RecycleOwnQuestioinsViewAdapter
+import com.morioka.thirdproject.common.SingletonService
 import kotlinx.android.synthetic.main.fragment_own_questions.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -72,30 +72,33 @@ class OwnQuestions : Fragment() {
 
         runBlocking {
             GlobalScope.launch {
-                othersQuestionList = (_dbContext as AppDatabase).questionFactory().getOthersQuestions("own")
+                othersQuestionList = (_dbContext as AppDatabase).questionFactory().getOthersQuestions(SingletonService.OWN)
             }.join()
         }
 
-        val adapter = RecycleOwnQuestioinsViewAdapter(othersQuestionList, object : RecycleOwnQuestioinsViewAdapter.ListListener {
-            override fun onClickRow(tappedView: View, question: Question) {
-                //集計結果を受信していた場合、確認フラグ更新
-                if (question.determinationFlag) {
-                    runBlocking {
-                        GlobalScope.launch {
-                            //確認フラグ更新
-                            val updateQuestion = (_dbContext as AppDatabase).questionFactory().getQuestion(question.id)
-                            updateQuestion.confirmationFlag = true
-                            (_dbContext as AppDatabase).questionFactory().update(updateQuestion)
-                        }.join()
+        val adapter = RecycleOwnQuestioinsViewAdapter(
+            othersQuestionList,
+            object : RecycleOwnQuestioinsViewAdapter.ListListener {
+                override fun onClickRow(tappedView: View, question: Question) {
+                    //集計結果を受信していた場合、確認フラグ更新
+                    if (question.determinationFlag) {
+                        runBlocking {
+                            GlobalScope.launch {
+                                //確認フラグ更新
+                                val updateQuestion =
+                                    (_dbContext as AppDatabase).questionFactory().getQuestion(question.id)
+                                updateQuestion.confirmationFlag = true
+                                (_dbContext as AppDatabase).questionFactory().update(updateQuestion)
+                            }.join()
+                        }
                     }
-                }
-                val intent = Intent(activity, DetailOwnQuestionActivity::class.java)
-                intent.putExtra("QUESTION_ID", question.id)
-                startActivity(intent)
+                    val intent = Intent(activity, DetailOwnQuestionActivity::class.java)
+                    intent.putExtra(SingletonService.QUESTION_ID, question.id)
+                    startActivity(intent)
 
-                _listener!!.onFragmentInteraction(0)
-            }
-        })
+                    _listener!!.onFragmentInteraction(0)
+                }
+            })
 
         recycle_own_view.setHasFixedSize(true)
         recycle_own_view.layoutManager = LinearLayoutManager(activity)
@@ -119,10 +122,6 @@ class OwnQuestions : Fragment() {
     override fun onDetach() {
         super.onDetach()
         _listener = null
-    }
-
-    override fun onStart() {
-        super.onStart()
     }
 
     /**

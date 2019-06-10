@@ -1,4 +1,4 @@
-package com.morioka.thirdproject.service
+package com.morioka.thirdproject.adapter
 
 import android.content.Context
 import android.graphics.Color

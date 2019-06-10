@@ -1,4 +1,4 @@
-package com.morioka.thirdproject.service
+package com.morioka.thirdproject.viewholder
 
 import android.support.v7.widget.RecyclerView
 import android.view.View
