@@ -69,7 +69,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         var question: Question? = null
         runBlocking {
             GlobalScope.launch {
-                question = (_dbContext as AppDatabase).questionFactory().getQuestion(questionId)
+                question = (_dbContext as AppDatabase).questionFactory().getQuestionById(questionId)
             }.join()
         }
 
@@ -110,7 +110,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
             answer1_number_tv.text = getString(R.string.answer_number, question!!.answer1number)
             answer2_number_tv.text= getString(R.string.answer_number, question!!.answer2number)
 
-            val answer1percentage = question!!.answer1number / (question!!.answer1number + question!!.answer2number)
+            val answer1percentage = question!!.answer1number * 100 / (question!!.answer1number + question!!.answer2number)
             val answer2percentage = 100 - answer1percentage
 
             answer1_percentage_tv.text = getString(R.string.answer_percentage, answer1percentage)
@@ -125,22 +125,22 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         }
 
         //TODO
-//        val now = Date()
-//        val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question!!.timeLimit)
-//
-//        if (now > timeLimit) {
-//            your_choice_tv.visibility = View.INVISIBLE
-//            answer_spinner.visibility = View.INVISIBLE
-//            answer_bt.visibility = View.INVISIBLE
-//            finished_tv.visibility = View.VISIBLE
-//            return
-//        }
+        val now = Date()
+        val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question!!.timeLimit)
+
+        if (now > timeLimit) {
+            your_choice_tv.visibility = View.INVISIBLE
+            answer_spinner.visibility = View.INVISIBLE
+            answer_bt.visibility = View.INVISIBLE
+            finished_tv.visibility = View.VISIBLE
+            return
+        }
 
         answer_bt.setOnClickListener {
-//            if (now > timeLimit) {
-//                Toast.makeText(this@DetailOthersQuestionActivity, "時間切れです", Toast.LENGTH_SHORT).show()
-//                return@setOnClickListener
-//            }
+            if (now > timeLimit) {
+                Toast.makeText(this@DetailOthersQuestionActivity, "時間切れです", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             // ダイアログを作成して表示
             AlertDialog.Builder(this).apply {
                 setMessage("本当に送信しますか？")
@@ -165,7 +165,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
         runBlocking {
             GlobalScope.launch {
-                val question = (_dbContext as AppDatabase).questionFactory().getQuestion(questionId)
+                val question = (_dbContext as AppDatabase).questionFactory().getQuestionById(questionId)
                 val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
 
                 //データベース更新

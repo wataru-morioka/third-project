@@ -86,7 +86,7 @@ class OwnQuestions : Fragment() {
                             GlobalScope.launch {
                                 //確認フラグ更新
                                 val updateQuestion =
-                                    (_dbContext as AppDatabase).questionFactory().getQuestion(question.id)
+                                    (_dbContext as AppDatabase).questionFactory().getQuestionById(question.id)
                                 updateQuestion.confirmationFlag = true
                                 (_dbContext as AppDatabase).questionFactory().update(updateQuestion)
                             }.join()

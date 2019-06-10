@@ -9,4 +9,5 @@ class OwnQuestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView){
     val confirm_icon = itemView.confirm_icon
     val question_tv = itemView.own_question_tv
     val aggregator_icon = itemView.aggregator_icon
+    val determinationi_tv = itemView.determination_tv
 }

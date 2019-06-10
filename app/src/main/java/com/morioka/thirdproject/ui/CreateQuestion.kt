@@ -188,7 +188,7 @@ class CreateQuestion : Fragment() {
 
                     channel.txRollback()
 
-                    val deleteQuestion = (_dbContext as AppDatabase).questionFactory().getQuestion(questionId)
+                    val deleteQuestion = (_dbContext as AppDatabase).questionFactory().getQuestionById(questionId)
                     (_dbContext as AppDatabase).questionFactory().delete(deleteQuestion)
 
                     //画面をクリア

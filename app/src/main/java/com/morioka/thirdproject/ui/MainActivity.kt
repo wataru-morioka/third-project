@@ -31,6 +31,7 @@ import authen.AuthenGrpc
 import authen.LoginRequest
 import authen.LoginResult
 import com.morioka.thirdproject.common.SingletonService
+import java.lang.Exception
 
 class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, CreateQuestion.OnFragmentInteractionListener,
     MemberStatus.OnFragmentInteractionListener, OthersQuestions.OnFragmentInteractionListener,
@@ -70,7 +71,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             }.join()
         }
 
-        println("サーバとセッション確立")
+        println("サーバとセッション確立開始")
         //サーバとセッション確立
         createSession()
 
@@ -176,8 +177,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
         val question: Question
         when (reply.owner) {
-            SingletonService.OWN ->  question = (_dbContext as AppDatabase).questionFactory().getQuestion(reply.questionId)
-            SingletonService.OTHERS ->  question = (_dbContext as AppDatabase).questionFactory().getQuestion(reply.questionSeq)
+            SingletonService.OWN ->  question = (_dbContext as AppDatabase).questionFactory().getQuestionById(reply.questionId)
+            SingletonService.OTHERS ->  question = (_dbContext as AppDatabase).questionFactory().getQuestionBySeq(reply.questionSeq)
             else -> return
         }
 
@@ -188,12 +189,21 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         question.determinationFlag = true
         question.modifiedDateTime = now
 
-        (_dbContext as AppDatabase).questionFactory().update(question)
+        //TODO エラー処理
+        try{
+            (_dbContext as AppDatabase).questionFactory().update(question)
+        } catch(e: Exception) {
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "データの登録に失敗しました", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
 
         //画面を再描画
         runOnUiThread {
             when (reply.owner) {
                 SingletonService.OWN ->{
+                    println("質問の集計結果更新イベントを周知")
                     onFragmentInteraction(0)
 
                     // Local Broadcast で発信する（activityも再描画させる）
@@ -202,6 +212,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
                     LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
                 }
                 SingletonService.OTHERS -> {
+                    println("他人の集計結果更新イベントを周知")
                     onFragmentInteraction(1)
 
                     // Local Broadcast で発信する（activityも再描画させる）
@@ -223,6 +234,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
         var result = false
 
+        println("質問の集計結果の登録が完了したことをサーバに送信")
         agent.receiveDone(request, object : StreamObserver<DoneResult> {
             override fun onNext(reply: DoneResult) {
                 println("res : " + reply.result)

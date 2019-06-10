@@ -64,7 +64,7 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         runBlocking {
             GlobalScope.launch {
                 user = (_dbContext as AppDatabase).userFactory().getMyInfo()
-                question = (_dbContext as AppDatabase).questionFactory().getQuestion(questionId)
+                question = (_dbContext as AppDatabase).questionFactory().getQuestionById(questionId)
             }.join()
         }
 
@@ -108,7 +108,7 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         answer1_number_tv.text = getString(R.string.answer_number, question!!.answer1number)
         answer2_number_tv.text= getString(R.string.answer_number, question!!.answer2number)
 
-        val answer1percentage = question!!.answer1number / (question!!.answer1number + question!!.answer2number)
+        val answer1percentage = question!!.answer1number * 100 / (question!!.answer1number + question!!.answer2number)
         val answer2percentage = 100 - answer1percentage
 
         answer1_percentage_tv.text = getString(R.string.answer_percentage, answer1percentage)

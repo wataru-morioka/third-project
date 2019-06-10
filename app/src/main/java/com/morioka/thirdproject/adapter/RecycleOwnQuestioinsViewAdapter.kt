@@ -29,6 +29,10 @@ class RecycleOwnQuestioinsViewAdapter (private val questionList: List<Question>,
         //質問セット
         holder.question_tv.text = questionList[position].question
 
+        if (!questionList[position].determinationFlag) {
+            holder.determinationi_tv.visibility = View.INVISIBLE
+        }
+
         //未開封のものはアイコンを変える
         if (questionList[position].confirmationFlag == null){
             holder.confirm_icon.setImageResource(android.R.drawable.btn_star_big_on)

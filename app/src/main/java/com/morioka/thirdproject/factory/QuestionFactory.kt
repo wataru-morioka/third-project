@@ -16,7 +16,10 @@ interface QuestionFactory {
     fun getCount(): Int
 
     @Query("SELECT * FROM question where Id = :questionId")
-    fun getQuestion(questionId: Long): Question
+    fun getQuestionById(questionId: Long): Question
+
+    @Query("SELECT * FROM question where questionSeq = :questionSeq and id = 8")
+    fun getQuestionBySeq(questionSeq: Long): Question
 
     @Query("SELECT * FROM question where owner = :owner order by createdDateTime")
     fun getOthersQuestions(owner: String): List<Question>

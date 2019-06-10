@@ -32,19 +32,22 @@ class RecycleOthersQuestioinsViewAdapter (private val questionList: List<Questio
             holder.confirm_icon.setImageResource(android.R.drawable.star_off)
         }
 
-        println(questionList[position].timeLimit)
+        holder.itemView.setOnClickListener {
+            listener.onClickRow(it, questionList[position])
+        }
 
-        val now = Date()
-        val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(questionList[position].timeLimit)
+        if (questionList[position].determinationFlag) {
+            holder.answer_icon.visibility = View.VISIBLE
+            holder.answer_icon.setImageResource(android.R.drawable.ic_media_play)
+            return
+        }
+
+        holder.determinationi_tv.visibility = View.INVISIBLE
 
         //期限内の場合、アイコン表示
         if (questionList[position].myDecision == 0) {
             holder.answer_icon.visibility = View.VISIBLE
             holder.answer_icon.setImageResource(android.R.drawable.ic_menu_edit)
-        }
-
-        holder.itemView.setOnClickListener {
-            listener.onClickRow(it, questionList[position])
         }
     }
 
