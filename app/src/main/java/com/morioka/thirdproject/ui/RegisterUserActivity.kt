@@ -1,10 +1,14 @@
 package com.morioka.thirdproject.ui
 
 import android.arch.persistence.room.Room
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.AsyncTask
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v4.content.LocalBroadcastManager
 import android.util.Log
 import android.widget.Toast
 import authen.*
@@ -23,15 +27,16 @@ import java.util.*
 
 class RegisterUserActivity : AppCompatActivity() {
     private var _sessionId: String? = null
+    private var _token: String? = null
+    private var _dbContext: AppDatabase? = null
 
     //初期画面条件分岐
-    inner class CheckMyInfoAsyncTask(db: AppDatabase) : AsyncTask<Void, Int, Boolean>() {
-        private val dbContext = db
+    inner class CheckMyInfoAsyncTask : AsyncTask<Void, Int, Boolean>() {
         override fun onPreExecute() {
         }
 
         override fun doInBackground(vararg param: Void?): Boolean {
-            val count = dbContext.userFactory().getCount()
+            val count = (_dbContext as AppDatabase).userFactory().getCount()
 
             //新規ユーザだった場合、登録画面表示
             if (count == 0) {
@@ -39,7 +44,7 @@ class RegisterUserActivity : AppCompatActivity() {
             }
 
             //ユーザ登録済みだった場合、サーバにセッションをもらいメイン画面へ遷移
-            login(dbContext)
+            login()
             return true
         }
         override fun onProgressUpdate(vararg values: Int?) {
@@ -54,7 +59,7 @@ class RegisterUserActivity : AppCompatActivity() {
             setContentView(R.layout.register_user)
             register_bt.setOnClickListener {
                 //登録リクエスト非同期通信
-                registerUser(dbContext)
+                registerUser()
             }
         }
     }
@@ -63,20 +68,28 @@ class RegisterUserActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val token = getToken()
+        //トークン取得
+        getToken()
+        if (_token == null) {
+            _token = ""
+        }
+
+        val messageFilter = IntentFilter("update_token")
+        // Broadcast を受け取る BroadcastReceiver を設定
+        // LocalBroadcast の設定
+        LocalBroadcastManager.getInstance(this).registerReceiver(UpdateTokenReceiver(), messageFilter)
 
         //TODO 初期画面表示→徐々に変化
         setContentView(R.layout.init)
 
-        val db = CommonService().getDbContext(this)
+        _dbContext = CommonService().getDbContext(this)
 
         //ユーザ登録済みかどうか確認
-        CheckMyInfoAsyncTask(db).execute()
+        CheckMyInfoAsyncTask().execute()
     }
 
     //トークン取得
-    private fun getToken(): String? {
-        var token: String? = null
+    private fun getToken() {
         FirebaseInstanceId.getInstance().instanceId.addOnCompleteListener { task ->
             if (!task.isSuccessful) {
                 println("トークン取得に失敗しました")
@@ -86,9 +99,8 @@ class RegisterUserActivity : AppCompatActivity() {
 
             println("トークン取得")
             Log.i("FIREBASE", "[CALLBACK] Token = ${task.result?.token}")
-            token = task.result?.token
+            _token = task.result?.token
         }
-        return token
     }
 
     override fun onRestart() {
@@ -105,6 +117,8 @@ class RegisterUserActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
+        //TODO アプリをアンインストールした際の処理
+
         //セッションクリア
         CommonService().logout(_sessionId as String)
         println("アプリ終了")
@@ -112,8 +126,11 @@ class RegisterUserActivity : AppCompatActivity() {
 
 
     //ログイン処理
-    private fun login(db: AppDatabase) {
-        val user = db.userFactory().getMyInfo()
+    private fun login() {
+        println("ログイン処理開始")
+        println(_token!!.length)
+
+        val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
 
         val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
             .usePlaintext()
@@ -122,7 +139,8 @@ class RegisterUserActivity : AppCompatActivity() {
 
         val request = LoginRequest.newBuilder()
             .setUserId(user.userId)
-            .setPassword(user.password.toString())
+            .setPassword(user.password)
+            .setToken(_token)
             .build()
 
         var result = false
@@ -162,7 +180,8 @@ class RegisterUserActivity : AppCompatActivity() {
     }
 
     //ユーザ登録処理
-    private fun registerUser(db: AppDatabase) {
+    private fun registerUser() {
+        println("ユーザ登録処理開始")
         //TODO 暗号化
         val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
             .usePlaintext()
@@ -180,6 +199,7 @@ class RegisterUserActivity : AppCompatActivity() {
 
         val request = RegistrationRequest.newBuilder()
             .setUserId(userId)
+            .setToken(_token)
             .build()
 
         var result = false
@@ -215,7 +235,7 @@ class RegisterUserActivity : AppCompatActivity() {
                 user.password = password
                 val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
                 user.createdDateTime = now
-                db.userFactory().insert(user)
+                (_dbContext as AppDatabase).userFactory().insert(user)
 
                 runOnUiThread {
                     Toast.makeText(this@RegisterUserActivity, "登録が完了いたしました", Toast.LENGTH_SHORT).show()
@@ -230,5 +250,15 @@ class RegisterUserActivity : AppCompatActivity() {
                 authenServer.shutdown()
             }
         })
+    }
+
+    //トークンが更新されたことを検知
+    inner class UpdateTokenReceiver: BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            Log.d("DataReceiver", "onReceive")
+
+            // Broadcast されたメッセージを取り出す
+            _token = intent.getStringExtra("TOKEN")
+        }
     }
 }

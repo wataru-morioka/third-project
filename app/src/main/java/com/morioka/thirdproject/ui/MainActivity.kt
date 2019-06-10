@@ -26,6 +26,10 @@ import socket.*
 import java.text.SimpleDateFormat
 import java.util.*
 import android.support.v4.content.LocalBroadcastManager
+import android.util.Log
+import authen.AuthenGrpc
+import authen.LoginRequest
+import authen.LoginResult
 
 class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, CreateQuestion.OnFragmentInteractionListener,
     MemberStatus.OnFragmentInteractionListener, OthersQuestions.OnFragmentInteractionListener,
@@ -37,6 +41,11 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val messageFilter = IntentFilter("update_token")
+        // Broadcast を受け取る BroadcastReceiver を設定
+        // LocalBroadcast の設定
+        LocalBroadcastManager.getInstance(this).registerReceiver(UpdateTokenReceiver(), messageFilter)
 
         //ユーザ情報取得
         if (savedInstanceState != null) {
@@ -325,5 +334,41 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     // Fragmentからのコールバックメソッド
     override fun onFragmentInteraction(uri: Uri) {
 
+    }
+
+    //トークンが更新されたことを検知
+    inner class UpdateTokenReceiver: BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            Log.d("DataReceiver", "onReceive")
+
+            // Broadcast されたメッセージを取り出す
+            val token = intent.getStringExtra("TOKEN")
+            val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
+
+            val authenServer = ManagedChannelBuilder.forAddress("10.0.2.2", 50030)
+                .usePlaintext()
+                .build()
+            val agent = AuthenGrpc.newStub(authenServer)
+
+            val request = LoginRequest.newBuilder()
+                .setUserId(user.userId)
+                .setPassword(user.password)
+                .setToken(token)
+                .build()
+
+            agent.login(request, object : StreamObserver<LoginResult> {
+                override fun onNext(reply: LoginResult) {
+                    println("res : " + reply.sessionId + reply.status)
+                }
+
+                override fun onError(t: Throwable?) {
+                    authenServer.shutdown()
+                }
+
+                override fun onCompleted() {
+                    authenServer.shutdown()
+                }
+            })
+        }
     }
 }

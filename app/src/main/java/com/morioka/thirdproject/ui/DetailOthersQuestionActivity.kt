@@ -31,11 +31,6 @@ import android.content.IntentFilter
 import com.google.gson.Gson
 import com.morioka.thirdproject.model.*
 import com.rabbitmq.client.ConnectionFactory
-import kotlinx.android.synthetic.main.fragment_create_question.*
-import com.rabbitmq.client.ConfirmListener
-import kotlinx.io.IOException
-import android.R.id.message
-import com.rabbitmq.client.MessageProperties
 
 private const val QUEUE_NAME = "answer"
 
@@ -60,11 +55,9 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
     private fun setScreen(questionId: Long) {
         _dbContext = CommonService().getDbContext(this)
-        var user: User? = null
         var question: Question? = null
         runBlocking {
             GlobalScope.launch {
-                user = (_dbContext as AppDatabase).userFactory().getMyInfo()
                 question = (_dbContext as AppDatabase).questionFactory().getQuestion(questionId)
             }.join()
         }

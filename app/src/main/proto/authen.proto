@@ -22,6 +22,7 @@ message Null {
 
 message RegistrationRequest {
     string userId = 1;
+    string token = 2;
 }
 
 message RegistrationResult {
@@ -34,6 +35,7 @@ message RegistrationResult {
 message LoginRequest {
     string userId = 1;
     string password = 2;
+    string token = 3;
 }
 
 message LoginResult {
