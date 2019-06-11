@@ -12,6 +12,8 @@ apply plugin: 'kotlinx-serialization'
 
 apply plugin: 'com.google.gms.google-services'
 
+apply plugin: "com.google.osdetector"
+
 android {
     compileSdkVersion 28
     defaultConfig {
@@ -33,12 +35,17 @@ android {
         sourceCompatibility '1.8'
         targetCompatibility '1.8'
     }
+    packagingOptions {
+        exclude 'META-INF/io.netty.versions.properties'
+        exclude 'META-INF/INDEX.LIST'
+    }
 }
 
+def tcnative_classifier = osdetector.classifier
 
 def kotlin_version = '1.3.31'
 def kotlinCoroutinesVersion = '1.0.0'
-def grpc_version = '1.18.0'
+def grpc_version = '1.21.0'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
@@ -49,10 +56,12 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
-    implementation "io.grpc:grpc-stub:1.18.0"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinCoroutinesVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinCoroutinesVersion"
 
+//    implementation 'io.netty:netty-tcnative-boringssl-static:1.1.33.Fork26'
+    implementation "io.grpc:grpc-netty-shaded:$grpc_version"
+    implementation 'io.netty:netty-tcnative-boringssl-static:2.0.22.Final:' + tcnative_classifier
     implementation "io.grpc:grpc-okhttp:$grpc_version"
     implementation "io.grpc:grpc-protobuf-lite:$grpc_version"
     implementation "io.grpc:grpc-stub:$grpc_version"
@@ -68,8 +77,8 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics:16.5.0'
     implementation 'com.google.firebase:firebase-messaging:18.0.0'
 
-//    implementation 'com.android.support:recyclerview-v7:28.1.0'
-//    implementation 'com.android.support:cardview-v7:28.1.0'
+//    implementation 'org.conscrypt:conscrypt-openjdk:2.1.0:'
+    implementation 'org.conscrypt:conscrypt-android:2.1.0'
 
     implementation "android.arch.persistence.room:runtime:1.1.1"
     kapt "android.arch.persistence.room:compiler:1.1.1"
@@ -87,6 +96,7 @@ repositories {
     jcenter()
     // artifacts are published to this repository
     maven { url "https://kotlin.bintray.com/kotlinx" }
+    mavenCentral()
 }
 
 

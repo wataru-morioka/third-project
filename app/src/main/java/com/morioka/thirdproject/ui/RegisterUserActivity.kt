@@ -18,8 +18,13 @@ import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.common.CommonService
 import com.morioka.thirdproject.common.SingletonService
 import io.grpc.ManagedChannelBuilder
+import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.android.synthetic.main.register_user.*
+import org.conscrypt.Conscrypt
+import java.io.File
+import java.security.Security
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -65,7 +70,10 @@ class RegisterUserActivity : AppCompatActivity() {
 
     //ユーザ登録処理
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
+
+        Security.insertProviderAt(Conscrypt.newProvider(), 1)
 
         //トークン取得
         getToken()
@@ -134,9 +142,17 @@ class RegisterUserActivity : AppCompatActivity() {
 
         val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
 
+//        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+//            .sslContext(
+//                GrpcSslContexts.forClient()
+//                    .trustManager(File(classLoader.getResource("grpc-server.crt").file))
+//                    .build())
+//            .build()
+
         val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             .usePlaintext()
             .build()
+
         val agent = AuthenGrpc.newStub(authenServer)
 
         val request = LoginRequest.newBuilder()
@@ -156,6 +172,7 @@ class RegisterUserActivity : AppCompatActivity() {
             }
 
             override fun onError(t: Throwable?) {
+                println("ログイン処理失敗")
                 authenServer.shutdown()
             }
 
