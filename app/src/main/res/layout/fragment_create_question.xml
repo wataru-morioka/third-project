@@ -40,10 +40,9 @@
                     <Button
                             android:text="確定"
                             android:background="@drawable/confirm_button_style"
-                            android:layout_width="5dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content" android:id="@+id/question_confirm_bt"
-                            android:layout_weight="1"
-                            android:textSize="12sp" android:layout_marginRight="5dp" android:layout_marginLeft="5dp"
+                            android:textSize="12sp" android:layout_marginRight="10dp" android:layout_marginLeft="5dp"
                     />
                 </LinearLayout>
                 <TextView
@@ -68,10 +67,9 @@
                     <Button
                             android:text="確定"
                             android:background="@drawable/confirm_button_style"
-                            android:layout_width="5dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content" android:id="@+id/answer1_confirm_bt"
-                            android:layout_weight="1"
-                            android:layout_marginLeft="5dp" android:layout_marginRight="5dp" android:textSize="12dp"/>
+                            android:layout_marginLeft="5dp" android:layout_marginRight="10dp" android:textSize="12dp"/>
                 </LinearLayout>
                 <TextView
                         android:text="Answer②"
@@ -95,10 +93,10 @@
                     <Button
                             android:text="確定"
                             android:background="@drawable/confirm_button_style"
-                            android:layout_width="5dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content" android:id="@+id/answer2_confirm_bt"
-                            android:layout_weight="1"
-                            android:textSize="12dp" android:layout_marginLeft="5dp" android:layout_marginRight="5dp"/>
+                            android:textSize="12dp" android:layout_marginLeft="5dp" android:layout_marginRight="10dp"
+                    />
                 </LinearLayout>
                 <TextView
                         android:text="対象人数"
@@ -121,11 +119,10 @@
                             android:layout_weight="1" android:textColor="#F1810E"/>
                     <Button
                             android:text="確定"
-                            android:layout_width="5dp"
+                            android:layout_width="wrap_content"
                             android:background="@drawable/confirm_button_style"
                             android:layout_height="wrap_content" android:id="@+id/target_confirm_bt"
-                            android:layout_weight="1"
-                            android:textSize="12dp" android:layout_marginLeft="5dp" android:layout_marginRight="5dp"
+                            android:textSize="12dp" android:layout_marginLeft="5dp" android:layout_marginRight="10dp"
                     />
                 </LinearLayout>
                 <Button
@@ -133,7 +130,7 @@
                         android:background="@drawable/submit_button_style"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/ask_bt"
-                        android:textSize="14sp" android:layout_gravity="center" android:layout_marginTop="20dp"
+                        android:textSize="14sp" android:layout_gravity="center" android:layout_marginTop="30dp"
                         android:layout_marginBottom="30dp" android:textColor="#F2F2F2"/>
             </LinearLayout>
         </android.support.constraint.ConstraintLayout>

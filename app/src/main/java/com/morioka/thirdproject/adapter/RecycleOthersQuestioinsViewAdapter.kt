@@ -14,13 +14,13 @@ import java.util.*
 class RecycleOthersQuestioinsViewAdapter (private val questionList: List<Question>, private val listener: ListListener) : RecyclerView.Adapter<OthersQuestionViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): OthersQuestionViewHolder {
-        Log.d("Adapter", "onCreateViewHolder")
+//        Log.d("Adapter", "onCreateViewHolder")
         val rowView: View = LayoutInflater.from(parent.context).inflate(R.layout.others_question_list_item, parent, false)
         return OthersQuestionViewHolder(rowView)
     }
 
     override fun onBindViewHolder(holder: OthersQuestionViewHolder, position: Int) {
-        Log.d("Adapter", "onBindViewHolder")
+//        Log.d("Adapter", "onBindViewHolder")
 
         //質問セット
         holder.question_tv.text = questionList[position].question
@@ -52,8 +52,8 @@ class RecycleOthersQuestioinsViewAdapter (private val questionList: List<Questio
     }
 
     override fun getItemCount(): Int {
-        Log.d("Adapter", "getItemCount")
-        println("質問数：" + questionList.size)
+//        Log.d("Adapter", "getItemCount")
+//        println("質問数：" + questionList.size)
         return questionList.size
     }
 

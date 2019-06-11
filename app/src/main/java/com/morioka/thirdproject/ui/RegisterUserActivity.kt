@@ -73,6 +73,10 @@ class RegisterUserActivity : AppCompatActivity() {
             _token = ""
         }
 
+        //ユーザ情報取得
+        _sessionId = intent.getStringExtra(SingletonService.SESSION_ID)
+        _status = intent.getIntExtra(SingletonService.STATUS, 0)
+
         val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
         // Broadcast を受け取る BroadcastReceiver を設定
         // LocalBroadcast の設定
@@ -104,7 +108,7 @@ class RegisterUserActivity : AppCompatActivity() {
 
     override fun onRestart() {
         super.onRestart()
-        println("activity再開")
+        println("RegisterUserActivity再開")
         val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
         //intent.putExtra("USER_ID", userId)
         intent.putExtra(SingletonService.SESSION_ID, _sessionId)
@@ -127,7 +131,6 @@ class RegisterUserActivity : AppCompatActivity() {
     //ログイン処理
     private fun login() {
         println("ログイン処理開始")
-        println(_token!!.length)
 
         val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
 
@@ -168,6 +171,7 @@ class RegisterUserActivity : AppCompatActivity() {
                 //intent.putExtra("USER_ID", user.userId)
                 intent.putExtra(SingletonService.SESSION_ID, _sessionId)
                 intent.putExtra(SingletonService.STATUS, _status)
+                intent.putExtra(SingletonService.USER_ID, user.userId)
                 startActivity(intent)
 
                 authenServer.shutdown()
@@ -239,6 +243,7 @@ class RegisterUserActivity : AppCompatActivity() {
                 //intent.putExtra("USER_ID", userId)
                 intent.putExtra(SingletonService.SESSION_ID, _sessionId)
                 intent.putExtra(SingletonService.STATUS, 0)
+                intent.putExtra(SingletonService.USER_ID, userId)
                 startActivity(intent)
 
                 authenServer.shutdown()

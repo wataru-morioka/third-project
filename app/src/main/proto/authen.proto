@@ -14,6 +14,8 @@ service Authen {
     rpc Login (LoginRequest) returns (LoginResult) {}
     // ログアウト処理依頼
     rpc Logout (LogoutRequest) returns (LogoutResult) {}
+    //セッション維持リクエスト
+    rpc MaintainSession (MaintenanceRequest) returns (MaintenanceResult) {}
 }
 
 // 空のmessage
@@ -49,6 +51,15 @@ message LogoutRequest {
 }
 
 message LogoutResult {
+    bool result = 1;
+}
+
+message MaintenanceRequest {
+    string sessionId = 1;
+    string userId = 2;
+}
+
+message MaintenanceResult {
     bool result = 1;
 }
 

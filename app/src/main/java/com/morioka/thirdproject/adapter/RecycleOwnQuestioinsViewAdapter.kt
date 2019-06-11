@@ -12,19 +12,18 @@ import com.morioka.thirdproject.viewholder.OwnQuestionViewHolder
 class RecycleOwnQuestioinsViewAdapter (private val questionList: List<Question>, private val listener: ListListener) : RecyclerView.Adapter<OwnQuestionViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): OwnQuestionViewHolder {
-        Log.d("Adapter", "onCreateViewHolder")
+//        Log.d("Adapter", "onCreateViewHolder")
         val rowView: View = LayoutInflater.from(parent.context).inflate(R.layout.own_question_list_item, parent, false)
         return OwnQuestionViewHolder(rowView)
     }
 
     override fun onBindViewHolder(holder: OwnQuestionViewHolder, position: Int) {
-        Log.d("Adapter", "onBindViewHolder")
+//        Log.d("Adapter", "onBindViewHolder")
 
 //        //質問送信時間セット
 //        val sendDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(questionList[position].createdDateTime)
 //        val sendDate = SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN).format(sendDateTime)
 //        holder.send_date_tv.text = sendDate
-
 
         //質問セット
         holder.question_tv.text = questionList[position].question
@@ -51,8 +50,8 @@ class RecycleOwnQuestioinsViewAdapter (private val questionList: List<Question>,
     }
 
     override fun getItemCount(): Int {
-        Log.d("Adapter", "getItemCount")
-        println("質問数：" + questionList.size)
+//        Log.d("Adapter", "getItemCount")
+//        println("質問数：" + questionList.size)
         return questionList.size
     }
 

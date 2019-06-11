@@ -27,10 +27,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.support.v4.content.LocalBroadcastManager
 import android.util.Log
-import authen.AuthenGrpc
-import authen.LoginRequest
-import authen.LoginResult
+import authen.*
 import com.morioka.thirdproject.common.SingletonService
+import io.grpc.ManagedChannel
 import java.lang.Exception
 
 class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, CreateQuestion.OnFragmentInteractionListener,
@@ -39,6 +38,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     private var _dbContext: AppDatabase? = null
     private var _sessionId: String? = null
     private var _status: Int = 0
+    private var _userId:String? = null
+    private var _socketServer: ManagedChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,12 +52,25 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
         //ユーザ情報取得
         if (savedInstanceState != null) {
-            println("MainActivityが復元されました")
-            _sessionId = savedInstanceState.getString(SingletonService.SESSION_ID)
-            _status = savedInstanceState.getInt(SingletonService.STATUS)
+            println("MainActivityが復元")
+//            _sessionId = savedInstanceState.getString(SingletonService.SESSION_ID)
+//            _status = savedInstanceState.getInt(SingletonService.STATUS)
+
+            //サーバとのセッションを破棄
+            if (_socketServer != null) {
+                _socketServer!!.shutdown()
+            }
+            _sessionId = null
+
+            //初期ログイン画面へ遷移→セッションを再生成
+            val intent = Intent(this, RegisterUserActivity::class.java)
+            startActivity(intent)
+
         } else {
+            println("MainActivityが生成")
             _sessionId = intent.getStringExtra(SingletonService.SESSION_ID)
-            _status = intent.getIntExtra(SingletonService.STATUS, -1)
+            _status = intent.getIntExtra(SingletonService.STATUS,  0)
+            _userId = intent.getStringExtra(SingletonService.USER_ID)
         }
 
         var user = User()
@@ -71,9 +85,13 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             }.join()
         }
 
-        println("サーバとセッション確立開始")
         //サーバとセッション確立
         createSession()
+
+        //セッション維持
+        GlobalScope.launch {
+            maintainSession()
+        }
 
         //tabとpagerを紐付ける
         pager.addOnPageChangeListener(this@MainActivity)
@@ -89,14 +107,15 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
     override fun onDestroy() {
         super.onDestroy()
+        _socketServer!!.shutdown()
         println("MainActivityが破棄されました")
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString(SingletonService.SESSION_ID, _sessionId)
-        outState.putInt(SingletonService.STATUS, _status)
-    }
+//    override fun onSaveInstanceState(outState: Bundle) {
+//        super.onSaveInstanceState(outState)
+//        outState.putString(SingletonService.SESSION_ID, _sessionId)
+//        outState.putInt(SingletonService.STATUS, _status)
+//    }
 
     //タブの設定
     private fun setTabLayout(user: User, sessionId: String) {
@@ -111,10 +130,12 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
     //サーバとセッション確立
     private fun createSession() {
-        val socketServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
+        println("サーバとセッション確立開始")
+
+        _socketServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
             .usePlaintext()
             .build()
-        val agent = SocketGrpc.newStub(socketServer)
+        val agent = SocketGrpc.newStub(_socketServer)
 
         val request = InfoRequest.newBuilder()
             .setSessionId(_sessionId)
@@ -155,8 +176,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             override fun onError(t: Throwable?) {
                 //TODO
-                println("サーバとセッション確立に失敗しました")
-                socketServer.shutdown()
+                println("サーバとセッション確立に失敗")
+                _socketServer!!.shutdown()
             }
 
             override fun onCompleted() {
@@ -168,7 +189,53 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 //                socketServer.shutdown()
             }
         })
-}
+    }
+
+    //セッション維持処理
+    private fun maintainSession(){
+        while (true) {
+            println("セッション維持処理")
+
+            val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+                .usePlaintext()
+                .build()
+            val agent = AuthenGrpc.newStub(authenServer)
+
+            val request = MaintenanceRequest.newBuilder()
+                .setSessionId(_sessionId)
+                .setUserId(_userId)
+                .build()
+
+            var result = false
+
+            agent.maintainSession(request, object : StreamObserver<MaintenanceResult> {
+                override fun onNext(reply: MaintenanceResult) {
+                    println("res : " + reply.result)
+                    result = reply.result
+                    if (!result) {
+                        return
+                    }
+                }
+
+                override fun onError(t: Throwable?) {
+                    //TODO
+                    println("セッション維持に失敗しました")
+                    authenServer.shutdown()
+                }
+
+                override fun onCompleted() {
+                    if (!result) {
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "セッション維持に失敗しました", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    authenServer.shutdown()
+                }
+            })
+
+            Thread.sleep(30000)
+        }
+    }
 
     //質問の集計結果を登録
     private fun registerAggregationResult(reply: InfoResult, agent: SocketGrpc.SocketStub){
@@ -353,6 +420,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     inner class UpdateTokenReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             Log.d("DataReceiver", "onReceive")
+            println("トークンが更新されました")
 
             // Broadcast されたメッセージを取り出す
             val token = intent.getStringExtra(SingletonService.TOKEN)
