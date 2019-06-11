@@ -419,8 +419,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     //トークンが更新されたことを検知
     inner class UpdateTokenReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            Log.d("DataReceiver", "onReceive")
-            println("トークンが更新されました")
+            println("トークンの更新を検知")
 
             // Broadcast されたメッセージを取り出す
             val token = intent.getStringExtra(SingletonService.TOKEN)

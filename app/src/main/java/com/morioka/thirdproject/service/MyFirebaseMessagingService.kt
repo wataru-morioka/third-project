@@ -14,23 +14,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         println("トークンが更新されました")
         Log.i("FIREBASE", "[SERVICE] Token = ${token ?: "Empty"}")
 
-        var updateToken: String? = null
-
-        FirebaseInstanceId.getInstance().instanceId.addOnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                println("トークン取得に失敗しました")
-                Log.w("FIREBASE", "getInstanceId failed", task.exception)
-                return@addOnCompleteListener
-            }
-
-            println("トークン取得")
-            Log.i("FIREBASE", "[CALLBACK] Token = ${task.result?.token}")
-            updateToken = task.result?.token
-        }
-
         // Local Broadcast で発信する（activityも再描画させる）
         val messageIntent = Intent(SingletonService.UPDATE_TOKEN)
-        messageIntent.putExtra("TOKEN", updateToken)
+        messageIntent.putExtra(SingletonService.TOKEN, token)
         LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
     }
 
@@ -39,13 +25,13 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             // 通知メッセージ
             message.notification?.let {
                 // 通知メッセージを処理
-                println("プッシュ通知を受信しました")
+                println("プッシュ通知を受信")
             }
 
             // データメッセージ
             message.data?.let {
                 // データメッセージを処理
-                println("データプッシュ通知を受信しました")
+                println("データプッシュ通知を受信")
             }
         }
     }
