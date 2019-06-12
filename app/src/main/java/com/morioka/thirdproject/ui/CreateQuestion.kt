@@ -3,7 +3,11 @@ package com.morioka.thirdproject.ui
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.support.v4.app.Fragment
+import android.support.v4.content.ContextCompat.getSystemService
+import android.support.v7.app.AppCompatActivity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -49,8 +53,8 @@ class CreateQuestion : Fragment() {
     private var _listener: OnFragmentInteractionListener? = null
     private val _dialog = ProgressDialog()
     private var _dbContext: AppDatabase? = null
-
-
+    private var _vib: Vibrator? = null
+    private var _vibrationEffect: VibrationEffect? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +64,11 @@ class CreateQuestion : Fragment() {
         }
 
         _dbContext = CommonService().getDbContext(context!!)
+
+        _vib = activity!!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            _vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
     }
 
     override fun onCreateView(
@@ -122,6 +131,12 @@ class CreateQuestion : Fragment() {
         //TODO 一度送信した後規定時間まで無効
         //「送信」ボタンクリックイベント
         ask_bt.setOnClickListener {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                _vib!!.vibrate(_vibrationEffect)
+            } else {
+                _vib!!.vibrate(100)
+            }
+
             if (question_tv.isEnabled || answer1_tv.isEnabled || answer2_tv.isEnabled || target_spinner.isEnabled) {
                 displayErrorMessage("確定していない項目があります")
                 return@setOnClickListener

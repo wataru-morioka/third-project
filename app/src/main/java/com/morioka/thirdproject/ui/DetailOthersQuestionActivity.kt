@@ -28,6 +28,9 @@ import android.content.Context
 import android.util.Log
 import android.support.v4.content.LocalBroadcastManager
 import android.content.IntentFilter
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.support.v4.content.ContextCompat
 import com.google.gson.Gson
 import com.morioka.thirdproject.common.SingletonService
 import com.morioka.thirdproject.model.*
@@ -39,10 +42,17 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
     private val _dialog = ProgressDialog()
     private var _dbContext: AppDatabase? = null
     private var _questionId: Long = 0
+    private var _vib: Vibrator? = null
+    private var _vibrationEffect: VibrationEffect? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.detail_others_question)
+
+        _vib = getSystemService(VIBRATOR_SERVICE) as Vibrator
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            _vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
 
         if (savedInstanceState != null) {
             _questionId = savedInstanceState.getLong(SingletonService.QUESTION_ID)
@@ -145,6 +155,11 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         }
 
         answer_bt.setOnClickListener {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                _vib!!.vibrate(_vibrationEffect)
+            } else {
+                _vib!!.vibrate(100)
+            }
             if (now > timeLimit) {
                 Toast.makeText(this@DetailOthersQuestionActivity, "時間切れです", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener

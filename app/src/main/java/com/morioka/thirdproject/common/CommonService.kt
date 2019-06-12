@@ -28,7 +28,7 @@ class CommonService {
     }
 
     fun getDbContext(context: Context): AppDatabase {
-        return Room.databaseBuilder(context, AppDatabase::class.java, "thirdProject2").build()
+        return Room.databaseBuilder(context, AppDatabase::class.java, "thirdProject3").build()
     }
 
     //ログアウト処理

@@ -1,12 +1,12 @@
 package com.morioka.thirdproject.ui
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.app.AlertDialog
+import android.content.*
 import android.os.AsyncTask
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.VibrationEffect.DEFAULT_AMPLITUDE
 import android.support.v4.content.LocalBroadcastManager
 import android.util.Log
 import android.widget.Toast
@@ -22,17 +22,23 @@ import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.android.synthetic.main.register_user.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.conscrypt.Conscrypt
-import java.io.File
 import java.security.Security
 import java.text.SimpleDateFormat
 import java.util.*
+import android.os.Vibrator
 
 class RegisterUserActivity : AppCompatActivity() {
     private var _sessionId: String? = null
     private var _token: String? = null
     private var _dbContext: AppDatabase? = null
     private  var _status: Int = 0
+    private val _dialog = ProgressDialog()
+    private var _vib: Vibrator? = null
+    private var _vibrationEffect: VibrationEffect? = null
 
     //初期画面条件分岐
     inner class CheckMyInfoAsyncTask : AsyncTask<Void, Int, Boolean>() {
@@ -62,8 +68,30 @@ class RegisterUserActivity : AppCompatActivity() {
             //ユーザ登録画面表示
             setContentView(R.layout.register_user)
             register_bt.setOnClickListener {
-                //登録リクエスト非同期通信
-                registerUser()
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    _vib!!.vibrate(_vibrationEffect)
+                } else {
+                    _vib!!.vibrate(100)
+                }
+                runOnUiThread {
+                    val userId = registration_id.text.toString()
+                    if (userId.isEmpty()){
+                        Toast.makeText(this@RegisterUserActivity, "IDを入力してください", Toast.LENGTH_SHORT).show()
+                        return@runOnUiThread
+                    }
+
+                    // ダイアログを作成して表示
+                    AlertDialog.Builder(this@RegisterUserActivity).apply {
+                        setMessage("『${userId}』を本当に登録しますか？")
+                        setPositiveButton("oK", DialogInterface.OnClickListener { _, _ ->
+                            _dialog.show(supportFragmentManager, "test")
+                            //登録リクエスト非同期通信
+                            registerUser()
+                        })
+                        setNegativeButton("cancel", null)
+                        show()
+                    }
+                }
             }
         }
     }
@@ -74,6 +102,11 @@ class RegisterUserActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         Security.insertProviderAt(Conscrypt.newProvider(), 1)
+
+        _vib = getSystemService(VIBRATOR_SERVICE) as Vibrator
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            _vibrationEffect = VibrationEffect.createOneShot(100, DEFAULT_AMPLITUDE)
+        }
 
         //トークン取得
         getToken()
@@ -173,6 +206,9 @@ class RegisterUserActivity : AppCompatActivity() {
 
             override fun onError(t: Throwable?) {
                 println("ログイン処理失敗")
+                runOnUiThread {
+                    Toast.makeText(this@RegisterUserActivity, "ログイン処理に失敗しました", Toast.LENGTH_SHORT).show()
+                }
                 authenServer.shutdown()
             }
 
@@ -207,13 +243,6 @@ class RegisterUserActivity : AppCompatActivity() {
         val agent = AuthenGrpc.newStub(authenServer)
 
         val userId = registration_id.text.toString()
-        if (userId.isEmpty()){
-            runOnUiThread {
-                Toast.makeText(this@RegisterUserActivity, "IDを入力してください", Toast.LENGTH_SHORT).show()
-            }
-            return
-        }
-
         val request = RegistrationRequest.newBuilder()
             .setUserId(userId)
             .setToken(_token)
@@ -234,10 +263,16 @@ class RegisterUserActivity : AppCompatActivity() {
 
             override fun onError(t: Throwable?) {
                 authenServer.shutdown()
+                _dialog.dismiss()
+                runOnUiThread {
+                    Toast.makeText(this@RegisterUserActivity, "サーバとの通信に失敗しました", Toast.LENGTH_SHORT).show()
+                }
+                return
             }
 
             override fun onCompleted() {
                 if (!result){
+                    _dialog.dismiss()
                     runOnUiThread {
                         Toast.makeText(this@RegisterUserActivity, "そのIDはすでに登録されています", Toast.LENGTH_SHORT).show()
                     }

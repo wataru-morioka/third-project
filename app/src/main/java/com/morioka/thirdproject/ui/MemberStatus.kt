@@ -4,6 +4,8 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.DialogInterface
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.support.v4.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -52,6 +54,8 @@ class MemberStatus : Fragment() {
     private var _listener: OnFragmentInteractionListener? = null
     private val _dialog = ProgressDialog()
     private var _dbContext: AppDatabase? = null
+    private var _vib: Vibrator? = null
+    private var _vibrationEffect: VibrationEffect? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,6 +66,11 @@ class MemberStatus : Fragment() {
         }
 
         _dbContext = CommonService().getDbContext(context!!)
+
+        _vib = activity!!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            _vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
         println("onCreate")
     }
 
@@ -113,7 +122,11 @@ class MemberStatus : Fragment() {
 
         //「送信」ボタンクリックイベント
         update_status_bt.setOnClickListener {
-
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                _vib!!.vibrate(_vibrationEffect)
+            } else {
+                _vib!!.vibrate(100)
+            }
             val updatedItem = max_target_spinner.selectedItem as Target
 
             if (updatedItem.status == presentStatus.status){
