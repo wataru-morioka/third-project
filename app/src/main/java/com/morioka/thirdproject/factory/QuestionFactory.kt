@@ -18,7 +18,7 @@ interface QuestionFactory {
     @Query("SELECT * FROM question where Id = :questionId")
     fun getQuestionById(questionId: Long): Question
 
-    @Query("SELECT * FROM question where questionSeq = :questionSeq and id = 8")
+    @Query("SELECT * FROM question where questionSeq = :questionSeq")
     fun getQuestionBySeq(questionSeq: Long): Question
 
     @Query("SELECT * FROM question where owner = :owner order by createdDateTime")

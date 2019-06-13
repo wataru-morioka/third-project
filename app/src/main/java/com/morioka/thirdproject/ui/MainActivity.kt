@@ -46,8 +46,6 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         setContentView(R.layout.activity_main)
 
         val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
-        // Broadcast を受け取る BroadcastReceiver を設定
-        // LocalBroadcast の設定
         LocalBroadcastManager.getInstance(this).registerReceiver(UpdateTokenReceiver(), messageFilter)
 
         //ユーザ情報取得
@@ -69,6 +67,9 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         } else {
             println("MainActivityが生成")
             _sessionId = intent.getStringExtra(SingletonService.SESSION_ID)
+            if (_sessionId.isNullOrEmpty()) {
+                _sessionId = ""
+            }
             _status = intent.getIntExtra(SingletonService.STATUS,  0)
             _userId = intent.getStringExtra(SingletonService.USER_ID)
         }
@@ -96,6 +97,13 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         //tabとpagerを紐付ける
         pager.addOnPageChangeListener(this@MainActivity)
         setTabLayout(user, _sessionId!!)
+
+        //プリバシーポリシーリンク
+        privacy_policy_tv.setOnClickListener {
+            val uri = Uri.parse("http://wtrmorioka.html.xdomain.jp/policy.html")
+            val intent = Intent(Intent.ACTION_VIEW, uri)
+            startActivity(intent)
+        }
     }
 
     override fun onRestart() {
@@ -176,11 +184,13 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             override fun onError(t: Throwable?) {
                 //TODO
-                println("サーバとセッション確立に失敗")
+                println("サーバとセッション中何かしらの処理に失敗")
+                println(t)
                 _socketServer!!.shutdown()
             }
 
             override fun onCompleted() {
+                println("サーバからレスポンスを受信")
                 if (!result) {
                     runOnUiThread {
                         Toast.makeText(this@MainActivity, "サーバの処理に失敗しました¥nアプリを再起動してください", Toast.LENGTH_SHORT).show()
@@ -245,7 +255,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         val question: Question
         when (reply.owner) {
             SingletonService.OWN ->  question = (_dbContext as AppDatabase).questionFactory().getQuestionById(reply.questionId)
-            SingletonService.OTHERS ->  question = (_dbContext as AppDatabase).questionFactory().getQuestionBySeq(reply.questionSeq)
+            SingletonService.OTHERS -> question = (_dbContext as AppDatabase).questionFactory().getQuestionBySeq(reply.questionSeq)
             else -> return
         }
 
@@ -255,6 +265,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         question.timeLimit = reply.timeLimit
         question.determinationFlag = true
         question.modifiedDateTime = now
+
 
         //TODO エラー処理
         try{
@@ -269,7 +280,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         //画面を再描画
         runOnUiThread {
             when (reply.owner) {
-                SingletonService.OWN ->{
+                SingletonService.OWN -> {
                     println("質問の集計結果更新イベントを周知")
                     onFragmentInteraction(0)
 

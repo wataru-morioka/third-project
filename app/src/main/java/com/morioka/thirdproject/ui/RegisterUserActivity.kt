@@ -30,6 +30,13 @@ import java.security.Security
 import java.text.SimpleDateFormat
 import java.util.*
 import android.os.Vibrator
+import io.grpc.netty.shaded.io.grpc.netty.NegotiationType
+import kotlinx.io.InputStream
+import java.io.File
+import java.io.FileInputStream
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+import javax.net.ssl.X509TrustManager
 
 class RegisterUserActivity : AppCompatActivity() {
     private var _sessionId: String? = null
@@ -174,14 +181,38 @@ class RegisterUserActivity : AppCompatActivity() {
         println("ログイン処理開始")
 
         val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
+//
+//        val fileInputStream = FileInputStream(File(classLoader.getResource("grpc-server.crt").file)
+
+//        val cert2 = CertificateFactory.getInstance("X.509").generateCertificate(fileInputStream)
+//
+//        val test2: X509Certificate? = null
+//
+//        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+//            .sslContext(
+//                GrpcSslContexts.forClient()
+//                    .trustManager(File(classLoader.getResource("ca.crt").file))
+//                    .build())
+//            .build()
+
 
 //        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
 //            .sslContext(
 //                GrpcSslContexts.forClient()
-//                    .trustManager(File(classLoader.getResource("grpc-server.crt").file))
+//                    .trustManager(FileInputStream("/src/main/resources"))
 //                    .build())
 //            .build()
 
+//        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+//                                              .negotiationType(NegotiationType.TLS)
+//                                              .sslContext(GrpcSslContexts.forClient().ciphers(null).build())
+//                                              .build()
+
+//        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+//            .negotiationType(NegotiationType.TLS)
+//            .useTransportSecurity()
+//            .build()
+////
         val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             .usePlaintext()
             .build()
@@ -206,9 +237,9 @@ class RegisterUserActivity : AppCompatActivity() {
 
             override fun onError(t: Throwable?) {
                 println("ログイン処理失敗")
-                runOnUiThread {
-                    Toast.makeText(this@RegisterUserActivity, "ログイン処理に失敗しました", Toast.LENGTH_SHORT).show()
-                }
+                //メイン画面へ遷移
+                moveToMainActivity(user)
+
                 authenServer.shutdown()
             }
 
@@ -220,16 +251,21 @@ class RegisterUserActivity : AppCompatActivity() {
                     return
                 }
 
-                val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
-                //intent.putExtra("USER_ID", user.userId)
-                intent.putExtra(SingletonService.SESSION_ID, _sessionId)
-                intent.putExtra(SingletonService.STATUS, _status)
-                intent.putExtra(SingletonService.USER_ID, user.userId)
-                startActivity(intent)
+                //メイン画面へ遷移
+                moveToMainActivity(user)
 
                 authenServer.shutdown()
             }
         })
+    }
+
+    //メイン画面へ遷移
+    private fun moveToMainActivity(user: User) {
+        val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
+        intent.putExtra(SingletonService.SESSION_ID, _sessionId)
+        intent.putExtra(SingletonService.STATUS, _status)
+        intent.putExtra(SingletonService.USER_ID, user.userId)
+        startActivity(intent)
     }
 
     //ユーザ登録処理

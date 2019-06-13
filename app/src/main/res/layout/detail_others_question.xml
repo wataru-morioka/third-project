@@ -123,7 +123,7 @@
                 <TextView
                         android:text="!!"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/textView11" android:layout_weight="1"
+                        android:layout_height="wrap_content" android:id="@+id/extend_tv" android:layout_weight="1"
                         android:textColor="#F2DE30"/>
             </LinearLayout>
             <TextView

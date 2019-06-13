@@ -30,13 +30,13 @@
                         android:layout_height="wrap_content">
                     <EditText
                             android:layout_width="wrap_content"
-                            android:layout_height="80dp"
+                            android:layout_height="wrap_content"
                             android:inputType="textMultiLine"
                             android:gravity="start|top"
                             android:ems="10"
                             android:id="@+id/question_tv" android:layout_weight="2" android:layout_marginLeft="10dp"
                             android:layout_marginTop="2dp" android:textSize="12sp" android:textColor="#E4E4E4"
-                            android:maxLength="2000"/>
+                            android:maxLength="2000" android:minHeight="100dp"/>
                     <Button
                             android:text="確定"
                             android:background="@drawable/confirm_button_style"
@@ -57,13 +57,13 @@
                         android:layout_height="wrap_content">
                     <EditText
                             android:layout_width="wrap_content"
-                            android:layout_height="80dp"
+                            android:layout_height="wrap_content"
                             android:inputType="textMultiLine"
                             android:gravity="start|top"
                             android:ems="10"
                             android:id="@+id/answer1_tv" android:layout_weight="2" android:layout_marginTop="2dp"
                             android:layout_marginLeft="10dp" android:textSize="12sp" android:textColor="#F2F2F2"
-                            android:maxLength="1000"/>
+                            android:maxLength="1000" android:minHeight="60dp"/>
                     <Button
                             android:text="確定"
                             android:background="@drawable/confirm_button_style"
@@ -84,13 +84,13 @@
                         android:layout_height="wrap_content">
                     <EditText
                             android:layout_width="wrap_content"
-                            android:layout_height="80dp"
+                            android:layout_height="wrap_content"
                             android:inputType="textMultiLine"
                             android:gravity="start|top"
                             android:ems="10"
                             android:id="@+id/answer2_tv" android:layout_weight="2" android:layout_marginLeft="10dp"
                             android:layout_marginTop="2dp" android:textSize="12sp" android:textColor="#F2F2F2"
-                            android:maxLength="1000"/>
+                            android:maxLength="1000" android:minHeight="60dp"/>
                     <Button
                             android:text="確定"
                             android:background="@drawable/confirm_button_style"
@@ -131,7 +131,7 @@
                         android:background="@drawable/submit_button_style"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/ask_bt"
-                        android:textSize="18sp" android:layout_gravity="center" android:layout_marginTop="30dp"
+                        android:textSize="18sp" android:layout_gravity="center" android:layout_marginTop="100dp"
                         android:layout_marginBottom="30dp" android:textColor="#F2F2F2"/>
             </LinearLayout>
         </android.support.constraint.ConstraintLayout>

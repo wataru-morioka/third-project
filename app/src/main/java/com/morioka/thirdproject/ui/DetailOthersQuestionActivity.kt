@@ -147,6 +147,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question!!.timeLimit)
 
         if (now > timeLimit) {
+            extend_tv.visibility = View.INVISIBLE
             your_choice_tv.visibility = View.INVISIBLE
             answer_spinner.visibility = View.INVISIBLE
             answer_bt.visibility = View.INVISIBLE
