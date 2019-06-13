@@ -34,6 +34,8 @@ import android.support.v4.content.ContextCompat
 import com.google.gson.Gson
 import com.morioka.thirdproject.common.SingletonService
 import com.morioka.thirdproject.model.*
+import com.rabbitmq.client.Channel
+import com.rabbitmq.client.Connection
 import com.rabbitmq.client.ConnectionFactory
 
 private const val QUEUE_NAME = SingletonService.ANSWER
@@ -195,12 +197,27 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
                 //データベース更新
                 question.myDecision = decision
                 question.modifiedDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
+
+                (_dbContext as AppDatabase).beginTransaction()
                 (_dbContext as AppDatabase).questionFactory().update(question)
 
-                val factory = ConnectionFactory()
-                factory.host = "10.0.2.2"
-                val connection = factory.newConnection()
-                val channel = connection.createChannel()
+                var connection: Connection? = null
+                var channel: Channel? = null
+
+                try {
+                    val factory = CommonService().getFactory()
+                    connection = factory.newConnection()
+                    channel = connection.createChannel()
+                    channel.queueDeclare(QUEUE_NAME, true, false, false, null)
+                } catch (e: Exception) {
+                    println("サーバとの接続に失敗")
+                    (_dbContext as AppDatabase).endTransaction()
+                    _dialog.dismiss()
+                    runOnUiThread{
+                        Toast.makeText(this@DetailOthersQuestionActivity, "サーバとの接続に失敗しました", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
 
                 //メッセージ作成
                 val answerRequest = AnswerRequest(
@@ -213,7 +230,6 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
                 //クラスオベジェクトをJSON文字列にデシリアライズ
                 val message = Gson().toJson(answerRequest)
 
-                channel.queueDeclare(QUEUE_NAME, false, false, false, null)
                 try {
                     channel.txSelect()
 
@@ -221,10 +237,11 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
                     channel.txCommit()
 
+                    (_dbContext as AppDatabase).setTransactionSuccessful()
+
                     println("キューメッセージ送信に成功しました")
                     println(" [x] Sent '$message'")
                     runOnUiThread{
-                        _dialog.dismiss()
                         Toast.makeText(this@DetailOthersQuestionActivity, "キューメッセージ送信に成功しました", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
@@ -232,18 +249,18 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
                     channel.txRollback()
 
-                    //データベース更新
-                    question.myDecision = 0
-                    (_dbContext as AppDatabase).questionFactory().update(question)
+//                    //データベース更新
+//                    question.myDecision = 0
+//                    (_dbContext as AppDatabase).questionFactory().update(question)
 
                     runOnUiThread{
                         Toast.makeText(this@DetailOthersQuestionActivity, "キューメッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
                     }
                 } finally {
-                    _dialog.dismiss()
-
+                    (_dbContext as AppDatabase).endTransaction()
                     channel.close()
                     connection.close()
+                    _dialog.dismiss()
                 }
             }.join()
         }

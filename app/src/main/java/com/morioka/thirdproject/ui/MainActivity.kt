@@ -109,8 +109,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     override fun onRestart() {
         super.onRestart()
         println("activity再開")
-        reViewFragment(0)
-        reViewFragment(1)
+//        reViewFragment(0)
+//        reViewFragment(1)
     }
 
     override fun onDestroy() {
@@ -263,9 +263,9 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         question.answer1number = reply.answer1Number
         question.answer2number = reply.answer2Number
         question.timeLimit = reply.timeLimit
+        question.confirmationFlag = false
         question.determinationFlag = true
         question.modifiedDateTime = now
-
 
         //TODO エラー処理
         try{

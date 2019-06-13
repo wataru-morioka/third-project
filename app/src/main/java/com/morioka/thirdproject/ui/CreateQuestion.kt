@@ -23,6 +23,8 @@ import com.google.gson.Gson
 import com.morioka.thirdproject.common.SingletonService
 import com.morioka.thirdproject.model.*
 import com.morioka.thirdproject.model.Target
+import com.rabbitmq.client.Channel
+import com.rabbitmq.client.Connection
 import com.rabbitmq.client.ConnectionFactory
 import java.text.SimpleDateFormat
 import java.util.*
@@ -155,14 +157,28 @@ class CreateQuestion : Fragment() {
 
         runBlocking {
             GlobalScope.launch {
+                (_dbContext as AppDatabase).beginTransaction()
+
                 //DBに登録し、その際のquestionIdを取得
                 val questionId = registerQuestion(selectedTarget.targetNumber)
 
-                val factory = ConnectionFactory()
-                factory.host = SingletonService.HOST
-                //TODO エラー処理
-                val connection = factory.newConnection()
-                val channel = connection.createChannel()
+                var connection: Connection? = null
+                var channel: Channel? = null
+
+                try {
+                    val factory = CommonService().getFactory()
+                    connection = factory.newConnection()
+                    channel = connection.createChannel()
+                    channel.queueDeclare(QUEUE_NAME, true, false, false, null)
+                } catch (e: Exception) {
+                    println("サーバとの接続に失敗")
+                    (_dbContext as AppDatabase).endTransaction()
+                    _dialog.dismiss()
+                    activity!!.runOnUiThread{
+                        Toast.makeText(context!!, "サーバとの接続に失敗しました", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
 
                 //メッセージ作成
                 val questionRequest = QuestionRequest(
@@ -178,7 +194,6 @@ class CreateQuestion : Fragment() {
                 //クラスオベジェクトをJSON文字列にデシリアライズ
                 val message = Gson().toJson(questionRequest)
 
-                channel.queueDeclare(QUEUE_NAME, false, false, false, null)
                 try {
                     channel.txSelect()
 
@@ -189,6 +204,8 @@ class CreateQuestion : Fragment() {
                     println("キューメッセージ送信に成功しました")
                     println(" [x] Sent '$message'")
                     _listener?.onFragmentInteraction(2)
+
+                    (_dbContext as AppDatabase).setTransactionSuccessful()
 
                     //画面をクリア
                     activity!!.runOnUiThread{
@@ -211,10 +228,10 @@ class CreateQuestion : Fragment() {
                         Toast.makeText(activity, "キューメッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
                     }
                 } finally {
-                    _dialog.dismiss()
-
+                    (_dbContext as AppDatabase).endTransaction()
                     channel.close()
                     connection.close()
+                    _dialog.dismiss()
                 }
             }.join()
         }

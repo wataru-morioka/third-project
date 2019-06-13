@@ -42,10 +42,11 @@ class RegisterUserActivity : AppCompatActivity() {
     private var _sessionId: String? = null
     private var _token: String? = null
     private var _dbContext: AppDatabase? = null
-    private  var _status: Int = 0
+    private var _status: Int = 0
     private val _dialog = ProgressDialog()
     private var _vib: Vibrator? = null
     private var _vibrationEffect: VibrationEffect? = null
+    private var _userId: String? = null
 
     //初期画面条件分岐
     inner class CheckMyInfoAsyncTask : AsyncTask<Void, Int, Boolean>() {
@@ -161,6 +162,7 @@ class RegisterUserActivity : AppCompatActivity() {
         //intent.putExtra("USER_ID", userId)
         intent.putExtra(SingletonService.SESSION_ID, _sessionId)
         intent.putExtra(SingletonService.STATUS, _status)
+        intent.putExtra(SingletonService.USER_ID, _userId)
         startActivity(intent)
     }
 
@@ -181,6 +183,8 @@ class RegisterUserActivity : AppCompatActivity() {
         println("ログイン処理開始")
 
         val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
+        _userId = user.userId
+
 //
 //        val fileInputStream = FileInputStream(File(classLoader.getResource("grpc-server.crt").file)
 
@@ -278,9 +282,9 @@ class RegisterUserActivity : AppCompatActivity() {
 
         val agent = AuthenGrpc.newStub(authenServer)
 
-        val userId = registration_id.text.toString()
+        _userId = registration_id.text.toString()
         val request = RegistrationRequest.newBuilder()
-            .setUserId(userId)
+            .setUserId(_userId)
             .setToken(_token)
             .build()
 
@@ -317,7 +321,7 @@ class RegisterUserActivity : AppCompatActivity() {
 
                 //ユーザ情報を登録
                 val user = User()
-                user.userId = userId
+                user.userId = _userId!!
                 user.password = password
                 val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
                 user.createdDateTime = now
@@ -331,7 +335,7 @@ class RegisterUserActivity : AppCompatActivity() {
                 //intent.putExtra("USER_ID", userId)
                 intent.putExtra(SingletonService.SESSION_ID, _sessionId)
                 intent.putExtra(SingletonService.STATUS, 0)
-                intent.putExtra(SingletonService.USER_ID, userId)
+                intent.putExtra(SingletonService.USER_ID, _userId)
                 startActivity(intent)
 
                 authenServer.shutdown()

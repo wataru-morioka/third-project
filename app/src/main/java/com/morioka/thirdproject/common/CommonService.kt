@@ -1,12 +1,15 @@
 package com.morioka.thirdproject.common
 
+import android.arch.persistence.db.SupportSQLiteDatabase
 import android.arch.persistence.room.Room
+import android.arch.persistence.room.migration.Migration
 import android.content.Context
 import authen.AuthenGrpc
 import authen.LogoutRequest
 import authen.LogoutResult
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Target
+import com.rabbitmq.client.ConnectionFactory
 import io.grpc.ManagedChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.GlobalScope
@@ -28,7 +31,14 @@ class CommonService {
     }
 
     fun getDbContext(context: Context): AppDatabase {
-        return Room.databaseBuilder(context, AppDatabase::class.java, "thirdProject2").build()
+        return Room.databaseBuilder(context, AppDatabase::class.java, "thirdProject")
+//            .addMigrations(object: Migration (2, 3) {
+//                override fun migrate(database: SupportSQLiteDatabase) {
+//                    database.execSQL("ALTER TABLE questioni ADD confirmationFlag not null")
+//                }
+//            })
+//            .fallbackToDestructiveMigration()
+            .build()
     }
 
     //ログアウト処理
@@ -66,5 +76,15 @@ class CommonService {
                 })
             }.join()
         }
+    }
+
+    //メッセージングサーバの接続情報を取得
+    fun getFactory(): ConnectionFactory {
+        val factory = ConnectionFactory()
+        factory.host = SingletonService.HOST
+        factory.virtualHost = SingletonService.VIRTUAL_HOST
+        factory.username = SingletonService.RABBITMQ_USER
+        factory.password = SingletonService.RABBITMQ_PASSWORD
+        return factory
     }
 }

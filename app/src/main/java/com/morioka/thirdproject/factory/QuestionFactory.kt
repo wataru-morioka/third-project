@@ -21,7 +21,7 @@ interface QuestionFactory {
     @Query("SELECT * FROM question where questionSeq = :questionSeq")
     fun getQuestionBySeq(questionSeq: Long): Question
 
-    @Query("SELECT * FROM question where owner = :owner order by createdDateTime")
+    @Query("SELECT * FROM question where owner = :owner order by createdDateTime desc")
     fun getOthersQuestions(owner: String): List<Question>
 
     @Query("SELECT count(1) FROM question where questionSeq = :questionSeq")

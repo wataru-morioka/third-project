@@ -33,7 +33,7 @@ class RecycleOwnQuestioinsViewAdapter (private val questionList: List<Question>,
         }
 
         //未開封のものはアイコンを変える
-        if (questionList[position].confirmationFlag == null){
+        if (!questionList[position].confirmationFlag){
             holder.confirm_icon.setImageResource(android.R.drawable.btn_star_big_on)
         } else {
             holder.confirm_icon.setImageResource(android.R.drawable.star_off)

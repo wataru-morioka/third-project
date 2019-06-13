@@ -18,7 +18,7 @@ class Question {
     var targetNumber: Int = 0
     var timePeriod: Int = 0
     var timeLimit: String? = null
-    var confirmationFlag: Boolean? = null
+    var confirmationFlag: Boolean = false
     var determinationFlag: Boolean = false
     var createdDateTime: String = ""
     var modifiedDateTime: String? = null
