@@ -35,6 +35,15 @@ import android.net.NetworkInfo
 import android.net.ConnectivityManager
 import com.morioka.thirdproject.common.ReceiverService.ConnectionReceiver
 import com.morioka.thirdproject.common.ReceiverService.UpdateTokenReceiver
+import com.morioka.thirdproject.model.UserInfo
+import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
+import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLoggerFactory
+import io.grpc.netty.shaded.io.netty.util.internal.logging.JdkLoggerFactory
+import org.conscrypt.Conscrypt
+import java.io.File
+import java.io.FileInputStream
+import java.security.Security
 
 class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, CreateQuestion.OnFragmentInteractionListener,
     MemberStatus.OnFragmentInteractionListener, OthersQuestions.OnFragmentInteractionListener,
@@ -49,6 +58,9 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        Security.insertProviderAt(Conscrypt.newProvider(), 1)
+        InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE)
 
         _dbContext = CommonService().getDbContext(this)
 
@@ -120,6 +132,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             println("セッションが残っている")
             return
         }
+
+        //ログイン
         val userInfo = CommonService().login(_dbContext!!)
 
         if (userInfo?.sessionId.isNullOrEmpty()) {
