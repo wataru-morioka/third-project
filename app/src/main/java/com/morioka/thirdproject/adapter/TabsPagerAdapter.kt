@@ -10,7 +10,7 @@ import com.morioka.thirdproject.ui.MemberStatus
 import com.morioka.thirdproject.ui.OthersQuestions
 import com.morioka.thirdproject.ui.OwnQuestions
 
-class TabsPagerAdapter(fm: FragmentManager, private val context: Context,private val user: User, private val sessionId: String) : FragmentStatePagerAdapter(fm) {
+class TabsPagerAdapter(fm: FragmentManager, private val context: Context,private val user: User, private val sessionId: String?) : FragmentStatePagerAdapter(fm) {
     private val pageTitle = arrayOf("自分の質問", "他人の質問", "新規作成", "会員情報")
 
     override fun getItem(position: Int): Fragment {

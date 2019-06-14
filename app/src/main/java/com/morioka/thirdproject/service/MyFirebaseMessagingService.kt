@@ -57,18 +57,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // Notificationを生成
         val builder = NotificationCompat.Builder(applicationContext)
         builder.setSmallIcon(R.mipmap.ic_launcher)
-        builder.setContentTitle(getString(R.string.app_name))
-//                builder.setContentText(remoteMessage.notification!!.body)
         if (type == "new") {
-            builder.setContentText("新着の質問があります") // 2行目
+            builder.setContentTitle("新着の質問があります") // 2行目
         } else {
-            builder.setContentText("回答の集計が完了しました") // 2行目
+            builder.setContentTitle("回答の集計が完了しました") // 2行目
         }
 
         if (owner == SingletonService.OWN) {
-            builder.setSubText("自分の質問") // 3行目
+            builder.setSubText("自分の質問の回答集計が完了") // 3行目
         } else {
-            builder.setSubText("相手の質問") // 3行目
+            builder.setSubText("相手の質問に新着情報") // 3行目
         }
         builder.setContentInfo("info") // 右端
         builder.setContentText(question)

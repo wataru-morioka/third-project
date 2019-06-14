@@ -24,14 +24,14 @@ class TargetSpinnerAdapter : ArrayAdapter<Target> {
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val textView = super.getView(position, convertView, parent) as TextView
-        textView.setText(getItem(position)!!.targetNumber.toString())
+        textView.text = getItem(position)?.targetNumber.toString()
         textView.setTextColor(Color.parseColor("#F2F2F2"))
         return textView
     }
 
     override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
         val textView = super.getDropDownView(position, convertView, parent) as TextView
-        textView.setText(getItem(position)!!.targetNumber.toString())
+        textView.text = getItem(position)?.targetNumber.toString()
         return textView
     }
 }

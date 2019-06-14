@@ -75,11 +75,17 @@ class OthersQuestions : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        //画面描画
+        setScreen()
+    }
+
+    //画面描画
+    private fun setScreen(){
         var othersQuestionList = listOf<Question>()
 
         runBlocking {
             GlobalScope.launch {
-                othersQuestionList = (_dbContext as AppDatabase).questionFactory().getOthersQuestions(SingletonService.OTHERS)
+                othersQuestionList = _dbContext!!.questionFactory().getOthersQuestions(SingletonService.OTHERS)
             }.join()
         }
 
@@ -90,9 +96,9 @@ class OthersQuestions : Fragment() {
                     runBlocking {
                         GlobalScope.launch {
                             //確認フラグ更新
-                            val updateQuestion = (_dbContext as AppDatabase).questionFactory().getQuestionById(question.id)
+                            val updateQuestion = _dbContext!!.questionFactory().getQuestionById(question.id)
                             updateQuestion.confirmationFlag = true
-                            (_dbContext as AppDatabase).questionFactory().update(updateQuestion)
+                            _dbContext!!.questionFactory().update(updateQuestion)
                         }.join()
                     }
 
@@ -100,7 +106,7 @@ class OthersQuestions : Fragment() {
                     intent.putExtra(SingletonService.QUESTION_ID, question.id)
                     startActivity(intent)
 
-                    _listener!!.onFragmentInteraction(1)
+                    _listener?.onFragmentInteraction(1)
                 }
             })
 
@@ -123,8 +129,11 @@ class OthersQuestions : Fragment() {
         _listener = null
     }
 
-    override fun onStart() {
-        super.onStart()
+    override fun onResume() {
+        super.onResume()
+        println("他人の質問一覧へ戻る")
+        //画面描画
+        setScreen()
     }
 
     /**

@@ -30,10 +30,12 @@ import java.security.Security
 import java.text.SimpleDateFormat
 import java.util.*
 import android.os.Vibrator
+import com.morioka.thirdproject.model.UserInfo
 import io.grpc.netty.shaded.io.grpc.netty.NegotiationType
 import kotlinx.io.InputStream
 import java.io.File
 import java.io.FileInputStream
+import java.lang.Exception
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import javax.net.ssl.X509TrustManager
@@ -54,7 +56,7 @@ class RegisterUserActivity : AppCompatActivity() {
         }
 
         override fun doInBackground(vararg param: Void?): Boolean {
-            val count = (_dbContext as AppDatabase).userFactory().getCount()
+            val count = _dbContext!!.userFactory().getCount()
 
             //新規ユーザだった場合、登録画面表示
             if (count == 0) {
@@ -62,7 +64,14 @@ class RegisterUserActivity : AppCompatActivity() {
             }
 
             //ユーザ登録済みだった場合、サーバにセッションをもらいメイン画面へ遷移
-            login()
+//            login()
+            val userInfo = CommonService().login(_dbContext!!)
+            _sessionId = userInfo?.sessionId
+            _status = userInfo?.status ?: 0
+            _userId = userInfo?.userId
+
+            //メイン画面へ遷移
+            moveToMainActivity(userInfo)
             return true
         }
         override fun onProgressUpdate(vararg values: Int?) {
@@ -77,9 +86,9 @@ class RegisterUserActivity : AppCompatActivity() {
             setContentView(R.layout.register_user)
             register_bt.setOnClickListener {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    _vib!!.vibrate(_vibrationEffect)
+                    _vib?.vibrate(_vibrationEffect)
                 } else {
-                    _vib!!.vibrate(100)
+                    _vib?.vibrate(100)
                 }
                 runOnUiThread {
                     val userId = registration_id.text.toString()
@@ -92,7 +101,6 @@ class RegisterUserActivity : AppCompatActivity() {
                     AlertDialog.Builder(this@RegisterUserActivity).apply {
                         setMessage("『${userId}』を本当に登録しますか？")
                         setPositiveButton("oK", DialogInterface.OnClickListener { _, _ ->
-                            _dialog.show(supportFragmentManager, "test")
                             //登録リクエスト非同期通信
                             registerUser()
                         })
@@ -117,10 +125,7 @@ class RegisterUserActivity : AppCompatActivity() {
         }
 
         //トークン取得
-        getToken()
-        if (_token == null) {
-            _token = ""
-        }
+        val _token = CommonService().getToken()
 
         //ユーザ情報取得
         _sessionId = intent.getStringExtra(SingletonService.SESSION_ID)
@@ -140,20 +145,7 @@ class RegisterUserActivity : AppCompatActivity() {
         CheckMyInfoAsyncTask().execute()
     }
 
-    //トークン取得
-    private fun getToken() {
-        FirebaseInstanceId.getInstance().instanceId.addOnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                println("トークン取得に失敗しました")
-                Log.w("FIREBASE", "getInstanceId failed", task.exception)
-                return@addOnCompleteListener
-            }
 
-            println("トークン取得")
-            Log.i("FIREBASE", "[CALLBACK] Token = ${task.result?.token}")
-            _token = task.result?.token
-        }
-    }
 
     override fun onRestart() {
         super.onRestart()
@@ -171,176 +163,176 @@ class RegisterUserActivity : AppCompatActivity() {
         super.onDestroy()
 
         //TODO アプリをアンインストールした際の処理
-
-        //セッションクリア
-        CommonService().logout(_sessionId as String)
         println("アプリ終了")
     }
 
 
-    //ログイン処理
-    private fun login() {
-        println("ログイン処理開始")
-
-        val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
-        _userId = user.userId
-
+//    //ログイン処理
+//    private fun login() {
+//        println("ログイン処理開始")
 //
-//        val fileInputStream = FileInputStream(File(classLoader.getResource("grpc-server.crt").file)
-
-//        val cert2 = CertificateFactory.getInstance("X.509").generateCertificate(fileInputStream)
+//        val user = _dbContext!!.userFactory().getMyInfo()
+//        _userId = user.userId
+//        var token = CommonService().getToken()
+//        if (token.isNullOrEmpty()){
+//            token = _token
+//        }
 //
-//        val test2: X509Certificate? = null
-//
-//        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-//            .sslContext(
-//                GrpcSslContexts.forClient()
-//                    .trustManager(File(classLoader.getResource("ca.crt").file))
-//                    .build())
-//            .build()
-
-
-//        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-//            .sslContext(
-//                GrpcSslContexts.forClient()
-//                    .trustManager(FileInputStream("/src/main/resources"))
-//                    .build())
-//            .build()
-
-//        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-//                                              .negotiationType(NegotiationType.TLS)
-//                                              .sslContext(GrpcSslContexts.forClient().ciphers(null).build())
-//                                              .build()
-
-//        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-//            .negotiationType(NegotiationType.TLS)
-//            .useTransportSecurity()
-//            .build()
 ////
-        val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-            .usePlaintext()
-            .build()
-
-        val agent = AuthenGrpc.newStub(authenServer)
-
-        val request = LoginRequest.newBuilder()
-            .setUserId(user.userId)
-            .setPassword(user.password)
-            .setToken(_token)
-            .build()
-
-        var result = false
-
-        agent.login(request, object : StreamObserver<LoginResult> {
-            override fun onNext(reply: LoginResult) {
-                println("res : " + reply.sessionId + reply.status)
-                result = reply.result
-                _sessionId = reply.sessionId
-                _status = reply.status
-            }
-
-            override fun onError(t: Throwable?) {
-                println("ログイン処理失敗")
-                //メイン画面へ遷移
-                moveToMainActivity(user)
-
-                authenServer.shutdown()
-            }
-
-            override fun onCompleted() {
-                if (!result) {
-                    runOnUiThread {
-                        Toast.makeText(this@RegisterUserActivity, "無効なアカウントです", Toast.LENGTH_SHORT).show()
-                    }
-                    return
-                }
-
-                //メイン画面へ遷移
-                moveToMainActivity(user)
-
-                authenServer.shutdown()
-            }
-        })
-    }
+////        val fileInputStream = FileInputStream(File(classLoader.getResource("grpc-server.crt").file)
+//
+////        val cert2 = CertificateFactory.getInstance("X.509").generateCertificate(fileInputStream)
+////
+////        val test2: X509Certificate? = null
+////
+////        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+////            .sslContext(
+////                GrpcSslContexts.forClient()
+////                    .trustManager(File(classLoader.getResource("ca.crt").file))
+////                    .build())
+////            .build()
+//
+//
+////        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+////            .sslContext(
+////                GrpcSslContexts.forClient()
+////                    .trustManager(FileInputStream("/src/main/resources"))
+////                    .build())
+////            .build()
+//
+////        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+////                                              .negotiationType(NegotiationType.TLS)
+////                                              .sslContext(GrpcSslContexts.forClient().ciphers(null).build())
+////                                              .build()
+//
+////        val authenServer = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+////            .negotiationType(NegotiationType.TLS)
+////            .useTransportSecurity()
+////            .build()
+//////
+//        val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+//            .usePlaintext()
+//            .build()
+//
+//        val agent = AuthenGrpc.newStub(authenServer)
+//
+//        val request = LoginRequest.newBuilder()
+//            .setUserId(user.userId)
+//            .setPassword(user.password)
+//            .setToken(token)
+//            .build()
+//
+//        var result = false
+//
+//        agent.login(request, object : StreamObserver<LoginResult> {
+//            override fun onNext(reply: LoginResult) {
+//                println("res : " + reply.sessionId + reply.status)
+//                result = reply.result
+//                _sessionId = reply.sessionId
+//                _status = reply.status
+//            }
+//
+//            override fun onError(t: Throwable?) {
+//                println("ログイン処理失敗")
+//                //メイン画面へ遷移
+//                moveToMainActivity(user)
+//
+//                authenServer.shutdown()
+//            }
+//
+//            override fun onCompleted() {
+//                if (!result) {
+//                    runOnUiThread {
+//                        Toast.makeText(this@RegisterUserActivity, "無効なアカウントです", Toast.LENGTH_SHORT).show()
+//                    }
+//                    return
+//                }
+//
+//                //メイン画面へ遷移
+//                moveToMainActivity(user)
+//
+//                authenServer.shutdown()
+//            }
+//        })
+//    }
 
     //メイン画面へ遷移
-    private fun moveToMainActivity(user: User) {
+    private fun moveToMainActivity(userInfo: UserInfo?) {
         val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
-        intent.putExtra(SingletonService.SESSION_ID, _sessionId)
-        intent.putExtra(SingletonService.STATUS, _status)
-        intent.putExtra(SingletonService.USER_ID, user.userId)
+        intent.putExtra(SingletonService.SESSION_ID, userInfo?.sessionId)
+        intent.putExtra(SingletonService.STATUS, userInfo?.status)
+        intent.putExtra(SingletonService.USER_ID, userInfo?.userId)
         startActivity(intent)
     }
 
     //ユーザ登録処理
     private fun registerUser() {
         println("ユーザ登録処理開始")
+        _dialog.show(supportFragmentManager, "test")
+
+        var token = CommonService().getToken()
+        if (token.isNullOrEmpty()) {
+            token = _token
+            if(token.isNullOrEmpty()){
+                token = ""
+            }
+        }
+
         //TODO 暗号化
         val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             .usePlaintext()
             .build()
 
-        val agent = AuthenGrpc.newStub(authenServer)
+        val agent = AuthenGrpc.newBlockingStub(authenServer)
 
         _userId = registration_id.text.toString()
         val request = RegistrationRequest.newBuilder()
             .setUserId(_userId)
-            .setToken(_token)
+            .setToken(token)
             .build()
 
-        var result = false
-        var password = ""
+        val response: RegistrationResult
+        try{
+            response = agent.register(request)
+            _sessionId = response.sessionId
+        } catch (e: Exception){
+            _dialog.dismiss()
+            Toast.makeText(this@RegisterUserActivity, "サーバに接続できません", Toast.LENGTH_SHORT).show()
+            authenServer.shutdown()
+            return
+        }
 
-        //サーバに非同期通信（ユーザ登録依頼）
-        agent.register(request, object : StreamObserver<RegistrationResult> {
-            override fun onNext(reply: RegistrationResult) {
-                println("res : " + reply.result + reply.password + reply.sessionId)
-                result = reply.result
-                //TODO パスワード暗号化
-                password = reply.password
-                _sessionId = reply.sessionId
-            }
+        if (!response.result){
+            _dialog.dismiss()
+            Toast.makeText(this@RegisterUserActivity, "そのIDはすでに登録されています", Toast.LENGTH_SHORT).show()
+            authenServer.shutdown()
+            return
+        }
 
-            override fun onError(t: Throwable?) {
-                authenServer.shutdown()
-                _dialog.dismiss()
-                runOnUiThread {
-                    Toast.makeText(this@RegisterUserActivity, "サーバとの通信に失敗しました", Toast.LENGTH_SHORT).show()
-                }
-                return
-            }
+        //ユーザ情報を登録
+        val user = User()
+        user.userId = _userId ?: ""
+        user.password = response.password
+        val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
+        user.createdDateTime = now
+        runBlocking {
+            GlobalScope.launch {
+                _dbContext!!.userFactory().insert(user)
+            }.join()
+        }
 
-            override fun onCompleted() {
-                if (!result){
-                    _dialog.dismiss()
-                    runOnUiThread {
-                        Toast.makeText(this@RegisterUserActivity, "そのIDはすでに登録されています", Toast.LENGTH_SHORT).show()
-                    }
-                    return
-                }
+        _dialog.dismiss()
 
-                //ユーザ情報を登録
-                val user = User()
-                user.userId = _userId!!
-                user.password = password
-                val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
-                user.createdDateTime = now
-                (_dbContext as AppDatabase).userFactory().insert(user)
+        Toast.makeText(this@RegisterUserActivity, "登録が完了いたしました", Toast.LENGTH_SHORT).show()
 
-                runOnUiThread {
-                    Toast.makeText(this@RegisterUserActivity, "登録が完了いたしました", Toast.LENGTH_SHORT).show()
-                }
+        val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
+        //intent.putExtra("USER_ID", userId)
+        intent.putExtra(SingletonService.SESSION_ID, _sessionId)
+        intent.putExtra(SingletonService.STATUS, 0)
+        intent.putExtra(SingletonService.USER_ID, _userId)
+        startActivity(intent)
 
-                val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
-                //intent.putExtra("USER_ID", userId)
-                intent.putExtra(SingletonService.SESSION_ID, _sessionId)
-                intent.putExtra(SingletonService.STATUS, 0)
-                intent.putExtra(SingletonService.USER_ID, _userId)
-                startActivity(intent)
-
-                authenServer.shutdown()
-            }
-        })
+        authenServer.shutdown()
     }
 
     //トークンが更新されたことを検知

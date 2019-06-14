@@ -81,39 +81,27 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         var question: Question? = null
         runBlocking {
             GlobalScope.launch {
-                question = (_dbContext as AppDatabase).questionFactory().getQuestionById(questionId)
+                question = _dbContext!!.questionFactory().getQuestionById(questionId)
             }.join()
         }
 
-        others_question_tv.text = question!!.question
-        answer1_tv.text = question!!.answer1
-        answer2_tv.text = question!!.answer2
+        others_question_tv.text = question?.question
+        answer1_tv.text = question?.answer1
+        answer2_tv.text = question?.answer2
 
         val adapter = AnswerSpinnerAdapter(this, listOf(1, 2))
 
         answer_spinner.adapter = adapter
-        // リスナーを登録
-        answer_spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener{
-            // アイテムが選択された時
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-//                val item = (parent as Spinner).selectedItem as Target
-//                Toast.makeText(context, item.name, Toast.LENGTH_SHORT).show()
-            }
-
-            // アイテムが選択されなかった
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-            }
-        }
 
         //質問送信時間セット
-        val receiveDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question!!.createdDateTime)
+        val receiveDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question?.createdDateTime)
         val sendDate = SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).format(receiveDateTime)
         receive_date_tv.text = sendDate
 
-        time_limit_tv.text = question!!.timeLimit
+        time_limit_tv.text = question?.timeLimit
 
         //集計結果受信前
-        if (question!!.determinationFlag) {
+        if (question?.determinationFlag == true) {
             answer1_number_tv.visibility = View.VISIBLE
             answer2_number_tv.visibility = View.VISIBLE
             answer1_percentage_tv.visibility = View.VISIBLE
@@ -122,13 +110,13 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
             answer1_number_tv.text = getString(R.string.answer_number, question!!.answer1number)
             answer2_number_tv.text= getString(R.string.answer_number, question!!.answer2number)
 
-            when (question!!.answer1number + question!!.answer2number) {
+            when (question?.answer1number ?: 0 + (question?.answer2number ?: 0)) {
                 0 -> {
                     answer1_percentage_tv.text = "0%"
                     answer2_percentage_tv.text = "0%"
                 }
                 else -> {
-                    val answer1percentage = question!!.answer1number * 100 / (question!!.answer1number + question!!.answer2number)
+                    val answer1percentage = question?.answer1number ?: 0 * 100 / (question?.answer1number ?: 0 + (question?.answer2number ?: 0))
                     val answer2percentage = 100 - answer1percentage
 
                     answer1_percentage_tv.text = getString(R.string.answer_percentage, answer1percentage)
@@ -137,7 +125,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
             }
         }
 
-        if (question!!.myDecision != 0) {
+        if (question?.myDecision != 0) {
             answer_spinner.setSelection(question!!.myDecision - 1)
             answer_spinner.isEnabled = false
             answer_bt.visibility = View.INVISIBLE
@@ -146,7 +134,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
         //TODO
         val now = Date()
-        val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question!!.timeLimit)
+        val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question?.timeLimit)
 
         if (now > timeLimit) {
             extend_tv.visibility = View.INVISIBLE
@@ -159,9 +147,9 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
         answer_bt.setOnClickListener {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                _vib!!.vibrate(_vibrationEffect)
+                _vib?.vibrate(_vibrationEffect)
             } else {
-                _vib!!.vibrate(100)
+                _vib?.vibrate(100)
             }
             if (now > timeLimit) {
                 Toast.makeText(this@DetailOthersQuestionActivity, "時間切れです", Toast.LENGTH_SHORT).show()
@@ -191,15 +179,15 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
         runBlocking {
             GlobalScope.launch {
-                val question = (_dbContext as AppDatabase).questionFactory().getQuestionById(questionId)
+                val question = _dbContext!!.questionFactory().getQuestionById(questionId)
                 val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
 
                 //データベース更新
                 question.myDecision = decision
                 question.modifiedDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
 
-                (_dbContext as AppDatabase).beginTransaction()
-                (_dbContext as AppDatabase).questionFactory().update(question)
+                _dbContext?.beginTransaction()
+                _dbContext!!.questionFactory().update(question)
 
                 var connection: Connection? = null
                 var channel: Channel? = null
@@ -211,7 +199,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
                     channel.queueDeclare(QUEUE_NAME, true, false, false, null)
                 } catch (e: Exception) {
                     println("サーバとの接続に失敗")
-                    (_dbContext as AppDatabase).endTransaction()
+                    _dbContext?.endTransaction()
                     _dialog.dismiss()
                     runOnUiThread{
                         Toast.makeText(this@DetailOthersQuestionActivity, "サーバとの接続に失敗しました", Toast.LENGTH_SHORT).show()
@@ -224,7 +212,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
                     question.questionSeq,
                     user.userId,
                     decision,
-                    question.timeLimit!!
+                    question.timeLimit ?: ""
                 )
 
                 //クラスオベジェクトをJSON文字列にデシリアライズ
@@ -237,7 +225,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
                     channel.txCommit()
 
-                    (_dbContext as AppDatabase).setTransactionSuccessful()
+                    _dbContext?.setTransactionSuccessful()
 
                     println("キューメッセージ送信に成功しました")
                     println(" [x] Sent '$message'")
@@ -257,7 +245,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
                         Toast.makeText(this@DetailOthersQuestionActivity, "キューメッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
                     }
                 } finally {
-                    (_dbContext as AppDatabase).endTransaction()
+                    _dbContext?.endTransaction()
                     channel.close()
                     connection.close()
                     _dialog.dismiss()

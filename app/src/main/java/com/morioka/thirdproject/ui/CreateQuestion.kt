@@ -67,7 +67,7 @@ class CreateQuestion : Fragment() {
 
         _dbContext = CommonService().getDbContext(context!!)
 
-        _vib = activity!!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        _vib = activity?.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             _vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
         }
@@ -93,7 +93,7 @@ class CreateQuestion : Fragment() {
 
         runBlocking {
             GlobalScope.launch {
-                _status = (_dbContext as AppDatabase).userFactory().getMyInfo().status
+                _status = _dbContext!!.userFactory().getMyInfo().status
             }.join()
         }
 
@@ -134,9 +134,9 @@ class CreateQuestion : Fragment() {
         //「送信」ボタンクリックイベント
         ask_bt.setOnClickListener {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                _vib!!.vibrate(_vibrationEffect)
+                _vib?.vibrate(_vibrationEffect)
             } else {
-                _vib!!.vibrate(100)
+                _vib?.vibrate(100)
             }
 
             if (question_tv.isEnabled || answer1_tv.isEnabled || answer2_tv.isEnabled || target_spinner.isEnabled) {
@@ -157,7 +157,7 @@ class CreateQuestion : Fragment() {
 
         runBlocking {
             GlobalScope.launch {
-                (_dbContext as AppDatabase).beginTransaction()
+                _dbContext?.beginTransaction()
 
                 //DBに登録し、その際のquestionIdを取得
                 val questionId = registerQuestion(selectedTarget.targetNumber)
@@ -172,9 +172,9 @@ class CreateQuestion : Fragment() {
                     channel.queueDeclare(QUEUE_NAME, true, false, false, null)
                 } catch (e: Exception) {
                     println("サーバとの接続に失敗")
-                    (_dbContext as AppDatabase).endTransaction()
+                    _dbContext?.endTransaction()
                     _dialog.dismiss()
-                    activity!!.runOnUiThread{
+                    activity?.runOnUiThread{
                         Toast.makeText(context!!, "サーバとの接続に失敗しました", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
@@ -182,7 +182,7 @@ class CreateQuestion : Fragment() {
 
                 //メッセージ作成
                 val questionRequest = QuestionRequest(
-                    _userId!!,
+                    _userId ?: "",
                     questionId,
                     question_tv.text.toString(),
                     answer1_tv.text.toString(),
@@ -201,14 +201,14 @@ class CreateQuestion : Fragment() {
 
                     channel.txCommit()
 
-                    println("キューメッセージ送信に成功しました")
+                    println("メッセージ送信に成功しました")
                     println(" [x] Sent '$message'")
                     _listener?.onFragmentInteraction(2)
 
-                    (_dbContext as AppDatabase).setTransactionSuccessful()
+                    _dbContext?.setTransactionSuccessful()
 
                     //画面をクリア
-                    activity!!.runOnUiThread{
+                    activity?.runOnUiThread{
                         //TODO リセット処理
                         question_tv.setText("")
                         answer1_tv.setText("")
@@ -216,19 +216,19 @@ class CreateQuestion : Fragment() {
                         Toast.makeText(activity, "送信が完了しました", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
-                    println("キューメッセージ送信に失敗しました")
+                    println("メッセージ送信に失敗しました")
 
                     channel.txRollback()
 
-                    val deleteQuestion = (_dbContext as AppDatabase).questionFactory().getQuestionById(questionId)
-                    (_dbContext as AppDatabase).questionFactory().delete(deleteQuestion)
+                    val deleteQuestion = _dbContext!!.questionFactory().getQuestionById(questionId)
+                    _dbContext!!.questionFactory().delete(deleteQuestion)
 
                     //画面をクリア
-                    activity!!.runOnUiThread{
-                        Toast.makeText(activity, "キューメッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
+                    activity?.runOnUiThread{
+                        Toast.makeText(activity, "メッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
                     }
                 } finally {
-                    (_dbContext as AppDatabase).endTransaction()
+                    _dbContext?.endTransaction()
                     channel.close()
                     connection.close()
                     _dialog.dismiss()
@@ -249,7 +249,7 @@ class CreateQuestion : Fragment() {
         question.createdDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
 
         //TODO エラー処理
-        return (_dbContext as AppDatabase).questionFactory().insert(question)
+        return _dbContext!!.questionFactory().insert(question)
     }
 
     private fun displayErrorMessage(message: String){

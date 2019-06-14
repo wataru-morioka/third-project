@@ -63,17 +63,17 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         var question: Question? = null
         runBlocking {
             GlobalScope.launch {
-                user = (_dbContext as AppDatabase).userFactory().getMyInfo()
-                question = (_dbContext as AppDatabase).questionFactory().getQuestionById(questionId)
+                user = _dbContext!!.userFactory().getMyInfo()
+                question = _dbContext!!.questionFactory().getQuestionById(questionId)
             }.join()
         }
 
-        own_question_tv.text = question!!.question
-        answer1_tv.text = question!!.answer1
-        answer2_tv.text = question!!.answer2
+        own_question_tv.text = question?.question
+        answer1_tv.text = question?.answer1
+        answer2_tv.text = question?.answer2
 
         //質問送信時間セット
-        val sendDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question!!.createdDateTime)
+        val sendDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question?.createdDateTime)
         val sendDate = SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).format(sendDateTime)
         send_date_tv.text = sendDate
 
@@ -81,13 +81,13 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         time_period_tv.text = getString(R.string.time_period, question!!.timePeriod)
 
         //集計結果受信前
-        if (!question!!.determinationFlag) {
+        if (question?.determinationFlag == false) {
             // Date型の日時をCalendar型に変換
             val calendar = Calendar.getInstance()
             calendar.time = sendDateTime
 
             // 日時を加算する
-            calendar.add(Calendar.MINUTE, question!!.timePeriod)
+            calendar.add(Calendar.MINUTE, question?.timePeriod ?: 0)
 
             // Calendar型の日時をDate型に戻す
             val timeLimit = calendar.time
@@ -108,13 +108,13 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         answer1_number_tv.text = getString(R.string.answer_number, question!!.answer1number)
         answer2_number_tv.text= getString(R.string.answer_number, question!!.answer2number)
 
-        when (question!!.answer1number + question!!.answer2number) {
+        when (question?.answer1number ?: 0 + (question?.answer2number ?: 0)) {
             0 -> {
                 answer1_percentage_tv.text = "0%"
                 answer2_percentage_tv.text = "0%"
             }
             else -> {
-                val answer1percentage = question!!.answer1number * 100 / (question!!.answer1number + question!!.answer2number)
+                val answer1percentage = question?.answer1number ?: 0 * 100 / (question?.answer1number ?: 0 + (question?.answer2number ?: 0))
                 val answer2percentage = 100 - answer1percentage
 
                 answer1_percentage_tv.text = getString(R.string.answer_percentage, answer1percentage)

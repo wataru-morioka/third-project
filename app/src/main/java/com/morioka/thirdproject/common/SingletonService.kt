@@ -1,6 +1,7 @@
 package com.morioka.thirdproject.common
 
 import android.app.Application
+import android.content.Context
 
 class SingletonService : Application() {
     override fun onCreate() {
@@ -9,7 +10,7 @@ class SingletonService : Application() {
     }
 
     companion object {
-        const val HOST = "192.168.0.100"
+        const val HOST = "10.0.2.2"
         const val VIRTUAL_HOST = "/third-project"
         const val RABBITMQ_USER  = "rabbitmq"
         const val RABBITMQ_PASSWORD  = "rabbitmq"
@@ -28,5 +29,9 @@ class SingletonService : Application() {
 
         var instance: SingletonService? = null
             private set
+    }
+
+    fun getAppContext(): Context {
+        return instance!!.applicationContext
     }
 }

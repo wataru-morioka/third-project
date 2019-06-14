@@ -68,11 +68,17 @@ class OwnQuestions : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        //画面描画
+        setScreen()
+    }
+
+    //画面描画
+    private fun setScreen(){
         var othersQuestionList = listOf<Question>()
 
         runBlocking {
             GlobalScope.launch {
-                othersQuestionList = (_dbContext as AppDatabase).questionFactory().getOthersQuestions(SingletonService.OWN)
+                othersQuestionList = _dbContext!!.questionFactory().getOthersQuestions(SingletonService.OWN)
             }.join()
         }
 
@@ -86,9 +92,9 @@ class OwnQuestions : Fragment() {
                             GlobalScope.launch {
                                 //確認フラグ更新
                                 val updateQuestion =
-                                    (_dbContext as AppDatabase).questionFactory().getQuestionById(question.id)
+                                    _dbContext!!.questionFactory().getQuestionById(question.id)
                                 updateQuestion.confirmationFlag = true
-                                (_dbContext as AppDatabase).questionFactory().update(updateQuestion)
+                                _dbContext!!.questionFactory().update(updateQuestion)
                             }.join()
                         }
                     }
@@ -96,7 +102,7 @@ class OwnQuestions : Fragment() {
                     intent.putExtra(SingletonService.QUESTION_ID, question.id)
                     startActivity(intent)
 
-                    _listener!!.onFragmentInteraction(0)
+                    _listener?.onFragmentInteraction(0)
                 }
             })
 
@@ -122,6 +128,14 @@ class OwnQuestions : Fragment() {
     override fun onDetach() {
         super.onDetach()
         _listener = null
+    }
+
+
+    override fun onResume() {
+        super.onResume()
+        println("自分の質問一覧へ戻る")
+        //画面描画
+        setScreen()
     }
 
     /**

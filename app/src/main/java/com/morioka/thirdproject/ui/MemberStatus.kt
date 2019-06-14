@@ -29,6 +29,7 @@ import kotlinx.coroutines.runBlocking
 import socket.SocketGrpc
 import socket.StatusResult
 import socket.UpdateRequest
+import java.lang.Exception
 
 
 // TODO: Rename parameter arguments, choose names that match
@@ -67,7 +68,7 @@ class MemberStatus : Fragment() {
 
         _dbContext = CommonService().getDbContext(context!!)
 
-        _vib = activity!!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        _vib = activity?.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             _vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
         }
@@ -94,7 +95,7 @@ class MemberStatus : Fragment() {
 
         runBlocking{
             GlobalScope.launch {
-                _status = (_dbContext as AppDatabase).userFactory().getMyInfo().status
+                _status = _dbContext!!.userFactory().getMyInfo().status
             }.join()
         }
 
@@ -123,9 +124,9 @@ class MemberStatus : Fragment() {
         //「送信」ボタンクリックイベント
         update_status_bt.setOnClickListener {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                _vib!!.vibrate(_vibrationEffect)
+                _vib?.vibrate(_vibrationEffect)
             } else {
-                _vib!!.vibrate(100)
+                _vib?.vibrate(100)
             }
             val updatedItem = max_target_spinner.selectedItem as Target
 
@@ -140,7 +141,7 @@ class MemberStatus : Fragment() {
                 setPositiveButton("oK", DialogInterface.OnClickListener { _, _ ->
                     _dialog.show(fragmentManager, "test")
                     //更新処理
-                    updateStatus(_sessionId as String, updatedItem.status)
+                    updateStatus(_sessionId, updatedItem.status)
                 })
                 setNegativeButton("cancel", null)
                 show()
@@ -149,59 +150,55 @@ class MemberStatus : Fragment() {
     }
 
     //ステータス更新処理
-    private fun updateStatus(sessionId: String, status: Int){
+    private fun updateStatus(sessionId: String?, status: Int){
         val socketServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
             .usePlaintext()
             .build()
-        val agent = SocketGrpc.newStub(socketServer)
+        val agent = SocketGrpc.newBlockingStub(socketServer)
 
         val request = UpdateRequest.newBuilder()
-            .setSessionId(sessionId)
+            .setSessionId(sessionId ?: "")
             .setStatus(status)
             .build()
 
-        var result = false
-
-        agent.updateStatus(request, object : StreamObserver<StatusResult> {
-            override fun onNext(reply: StatusResult) {
-                println("受信成功：" + reply.result)
-                result = reply.result
+        val response: StatusResult
+        try {
+            response = agent.updateStatus(request)
+        } catch (e: Exception) {
+            _dialog.dismiss()
+            activity?.runOnUiThread{
+                Toast.makeText(activity, "更新に失敗しました", Toast.LENGTH_SHORT).show()
             }
+            socketServer.shutdown()
+            return
+        }
 
-            override fun onError(t: Throwable?) {
-                _dialog.dismiss()
-                activity?.runOnUiThread{
-                    Toast.makeText(activity, "更新に失敗しました", Toast.LENGTH_SHORT).show()
-                }
-                socketServer.shutdown()
+        if (!response.result) {
+            _dialog.dismiss()
+            activity?.runOnUiThread{
+                Toast.makeText(activity, "更新に失敗しました", Toast.LENGTH_SHORT).show()
             }
+            socketServer.shutdown()
+        }
 
-            override fun onCompleted() {
-                if (!result) {
-                    _dialog.dismiss()
-                    activity?.runOnUiThread{
-                        Toast.makeText(activity, "更新に失敗しました", Toast.LENGTH_SHORT).show()
-                    }
-                    socketServer.shutdown()
-                    return
-                }
-
+        runBlocking {
+            GlobalScope.launch {
                 //DB更新
-                val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
+                val user = _dbContext!!.userFactory().getMyInfo()
                 user.status = status
-                (_dbContext as AppDatabase).userFactory().update(user)
+                _dbContext!!.userFactory().update(user)
+            }.join()
+        }
 
-                activity?.runOnUiThread{
-                    Toast.makeText(activity, "更新が完了しました", Toast.LENGTH_SHORT).show()
-                }
+        _listener?.onFragmentInteraction(2)
+        _listener?.onFragmentInteraction(3)
 
-                _listener?.onFragmentInteraction(2)
-                _listener?.onFragmentInteraction(3)
+        _dialog.dismiss()
 
-                _dialog.dismiss()
-                socketServer.shutdown()
-            }
-        })
+        activity?.runOnUiThread{
+            Toast.makeText(activity, "更新が完了しました", Toast.LENGTH_SHORT).show()
+        }
+        socketServer.shutdown()
     }
 
 //    // TODO: Rename method, update argument and hook method into UI event
