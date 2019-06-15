@@ -2,6 +2,7 @@ package com.morioka.thirdproject.common
 
 import android.app.Application
 import android.content.Context
+import javax.net.ssl.SSLSocketFactory
 
 class SingletonService : Application() {
     override fun onCreate() {

@@ -9,8 +9,10 @@ import authen.LoginRequest
 import authen.LoginResult
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.User
+import com.squareup.okhttp.ConnectionSpec
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
+import io.grpc.okhttp.OkHttpChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -64,8 +66,9 @@ class ReceiverService {
 
             var authenChannel: ManagedChannel? = null
             try {
-                authenChannel = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-                    .usePlaintext()
+                authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+                    .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
+                    .sslSocketFactory(CommonService().createSocketFactory())
                     .build()
                 val agent = AuthenGrpc.newStub(authenChannel)
 

@@ -20,7 +20,9 @@ import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.common.CommonService
 import com.morioka.thirdproject.adapter.TargetSpinnerAdapter
 import com.morioka.thirdproject.common.SingletonService
+import com.squareup.okhttp.ConnectionSpec
 import io.grpc.ManagedChannelBuilder
+import io.grpc.okhttp.OkHttpChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.android.synthetic.main.fragment_member_status.*
 import kotlinx.coroutines.GlobalScope
@@ -151,8 +153,9 @@ class MemberStatus : Fragment() {
 
     //ステータス更新処理
     private fun updateStatus(sessionId: String?, status: Int){
-        val socketServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
-            .usePlaintext()
+        val socketServer = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
+            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
+            .sslSocketFactory(CommonService().createSocketFactory())
             .build()
         val agent = SocketGrpc.newBlockingStub(socketServer)
 

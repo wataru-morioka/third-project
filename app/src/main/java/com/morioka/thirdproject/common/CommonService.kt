@@ -1,34 +1,41 @@
 package com.morioka.thirdproject.common
 
-import android.arch.persistence.db.SupportSQLiteDatabase
 import android.arch.persistence.room.Room
-import android.arch.persistence.room.migration.Migration
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
 import authen.*
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Target
 import com.rabbitmq.client.ConnectionFactory
-import io.grpc.ManagedChannelBuilder
-import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import android.net.NetworkInfo
 import android.net.ConnectivityManager
-import android.support.v4.content.LocalBroadcastManager
 import android.util.Log
 import com.google.firebase.iid.FirebaseInstanceId
 import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.model.UserInfo
+import com.squareup.okhttp.ConnectionSpec
 import io.grpc.ManagedChannel
+import io.grpc.ManagedChannelBuilder
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
-import java.io.File
-import java.io.FileInputStream
+import io.grpc.okhttp.OkHttpChannelBuilder
+import io.grpc.okhttp.internal.Platform
 import java.lang.Exception
+import io.grpc.internal.GrpcUtil
+import kotlinx.io.InputStream
+import java.io.BufferedInputStream
+import java.io.FileInputStream
+import java.security.GeneralSecurityException
+import java.security.KeyStore
+import java.security.SecureRandom
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.TrustManagerFactory
+
 
 class CommonService {
 //    val host: String = "10.0.2.2"
@@ -74,6 +81,45 @@ class CommonService {
         return ""
     }
 
+    //SSLSocketFactory生成
+    fun createSocketFactory(): SSLSocketFactory? {
+        var sslSocketFactory: SSLSocketFactory? = null
+        try {
+            val cf: CertificateFactory = CertificateFactory.getInstance("X.509")
+            // From https://www.washington.edu/itconnect/security/ca/load-der.crt
+            val caInput: InputStream = BufferedInputStream(SingletonService().getAppContext().classLoader.getResourceAsStream("ca-cert.pem"))
+
+//            val inputAsString = caInput.bufferedReader().use { it.readText() }
+
+            val ca: X509Certificate = caInput.use {
+                cf.generateCertificate(it) as X509Certificate
+            }
+            System.out.println("SocketFactory生成成功：ca=" + ca.subjectDN)
+
+            // Create a KeyStore containing our trusted CAs
+            val keyStoreType = KeyStore.getDefaultType()
+            val keyStore = KeyStore.getInstance(keyStoreType).apply {
+                load(null, null)
+                setCertificateEntry("ca", ca)
+            }
+
+            // Create a TrustManager that trusts the CAs inputStream our KeyStore
+            val tmfAlgorithm: String = TrustManagerFactory.getDefaultAlgorithm()
+            val tmf: TrustManagerFactory = TrustManagerFactory.getInstance(tmfAlgorithm).apply {
+                init(keyStore)
+            }
+
+            // Create an SSLContext that uses our TrustManager
+            val sslContext: SSLContext = SSLContext.getInstance("TLS").apply {
+                init(null, tmf.trustManagers, null)
+            }
+            sslSocketFactory = sslContext.socketFactory
+            return sslSocketFactory
+        } catch (gse: GeneralSecurityException) {
+            throw RuntimeException("TLS Provider failure", gse)
+        }
+    }
+
     //ログイン処理
     fun login(_dbContext: AppDatabase): UserInfo? {
         println("ログイン処理開始")
@@ -86,24 +132,22 @@ class CommonService {
                 user = _dbContext.userFactory().getMyInfo()
             }.join()
         }
-        val userId = user?.userId
 
+        val userId = user?.userId
         var authenChannel: ManagedChannel? = null
 
         try {
-            authenChannel = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-                .usePlaintext()
+//            authenChannel = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+//                .usePlaintext()
+//                .build()
+            authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+                .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
+                .sslSocketFactory(createSocketFactory())
                 .build()
-
-//            authenChannel = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-//                                                .sslContext(
-//                                                    GrpcSslContexts.forClient()
-//                                                        .trustManager(SingletonService().getAppContext().classLoader.getResourceAsStream("cacert.pem"))
-//                                                        .build())
-//                                                .build()
         } catch (e: Exception) {
-            authenChannel?.shutdown()
             println("サーバに接続に失敗")
+            e.printStackTrace()
+            authenChannel?.shutdown()
             return null
         }
 
@@ -118,6 +162,7 @@ class CommonService {
         var userInfo: UserInfo? = null
 
         val response: LoginResult
+
         try {
             response = agent.login(request)
         } catch (e: Exception) {

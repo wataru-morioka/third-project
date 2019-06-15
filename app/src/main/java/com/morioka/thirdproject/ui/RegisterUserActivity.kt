@@ -18,8 +18,6 @@ import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.common.CommonService
 import com.morioka.thirdproject.common.SingletonService
 import io.grpc.ManagedChannelBuilder
-import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
-import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.android.synthetic.main.register_user.*
 import kotlinx.coroutines.GlobalScope
@@ -31,10 +29,12 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.os.Vibrator
 import com.morioka.thirdproject.model.UserInfo
+import com.squareup.okhttp.ConnectionSpec
 import io.grpc.ManagedChannel
 import io.grpc.netty.shaded.io.grpc.netty.NegotiationType
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLoggerFactory
 import io.grpc.netty.shaded.io.netty.util.internal.logging.JdkLoggerFactory
+import io.grpc.okhttp.OkHttpChannelBuilder
 import kotlinx.io.InputStream
 import java.io.File
 import java.io.FileInputStream
@@ -193,8 +193,9 @@ class RegisterUserActivity : AppCompatActivity() {
         }
 
         //TODO 暗号化
-        val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-            .usePlaintext()
+        val authenServer = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
+            .sslSocketFactory(CommonService().createSocketFactory())
             .build()
 
         val agent = AuthenGrpc.newBlockingStub(authenServer)

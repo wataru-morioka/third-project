@@ -36,10 +36,12 @@ import android.net.ConnectivityManager
 import com.morioka.thirdproject.common.ReceiverService.ConnectionReceiver
 import com.morioka.thirdproject.common.ReceiverService.UpdateTokenReceiver
 import com.morioka.thirdproject.model.UserInfo
+import com.squareup.okhttp.ConnectionSpec
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLoggerFactory
 import io.grpc.netty.shaded.io.netty.util.internal.logging.JdkLoggerFactory
+import io.grpc.okhttp.OkHttpChannelBuilder
 import org.conscrypt.Conscrypt
 import java.io.File
 import java.io.FileInputStream
@@ -191,8 +193,9 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     private fun createSession() {
         println("サーバとセッション確立開始")
 
-        _socketServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
-            .usePlaintext()
+        _socketServer = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
+            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
+            .sslSocketFactory(CommonService().createSocketFactory())
             .build()
         val agent = SocketGrpc.newStub(_socketServer)
 
@@ -261,8 +264,9 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             println("セッション維持処理")
 
-            val authenServer = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-                .usePlaintext()
+            val authenServer = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+                .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
+                .sslSocketFactory(CommonService().createSocketFactory())
                 .build()
             val agent = AuthenGrpc.newStub(authenServer)
 
