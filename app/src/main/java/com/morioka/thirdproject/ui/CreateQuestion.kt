@@ -171,7 +171,7 @@ class CreateQuestion : Fragment() {
                     channel = connection.createChannel()
                     channel.queueDeclare(QUEUE_NAME, true, false, false, null)
                 } catch (e: Exception) {
-                    println("サーバとの接続に失敗")
+                    println("エラー：キューサーバとの接続に失敗")
                     _dbContext?.endTransaction()
                     _dialog.dismiss()
                     activity?.runOnUiThread{

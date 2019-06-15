@@ -137,7 +137,8 @@ class CommonService {
     fun getFactory(): ConnectionFactory {
         val factory = ConnectionFactory()
         factory.host = SingletonService.HOST
-        factory.port = 5672
+        factory.port = SingletonService.RABBITMQ_PORT
+        factory.useSslProtocol("TLSv1.2")
         factory.virtualHost = SingletonService.VIRTUAL_HOST
         factory.username = SingletonService.RABBITMQ_USER
         factory.password = SingletonService.RABBITMQ_PASSWORD

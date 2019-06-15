@@ -16,6 +16,7 @@ class SingletonService : Application() {
         const val RABBITMQ_PASSWORD  = "rabbitmq"
         const val GRPC_PORT = 50050
         const val AUTHEN_PORT = 50030
+        const val RABBITMQ_PORT = 5671
         const val UPDATE_TOKEN = "update_token"
         const val OWN = "own"
         const val OTHERS = "others"
