@@ -108,13 +108,13 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         answer1_number_tv.text = getString(R.string.answer_number, question!!.answer1number)
         answer2_number_tv.text= getString(R.string.answer_number, question!!.answer2number)
 
-        when (question?.answer1number ?: 0 + (question?.answer2number ?: 0)) {
+        when ((question?.answer1number ?: 0) + (question?.answer2number ?: 0)) {
             0 -> {
                 answer1_percentage_tv.text = "0%"
                 answer2_percentage_tv.text = "0%"
             }
             else -> {
-                val answer1percentage = question?.answer1number ?: 0 * 100 / (question?.answer1number ?: 0 + (question?.answer2number ?: 0))
+                val answer1percentage = (question?.answer1number ?: 0) * 100 / ((question?.answer1number ?: 0) + (question?.answer2number ?: 0))
                 val answer2percentage = 100 - answer1percentage
 
                 answer1_percentage_tv.text = getString(R.string.answer_percentage, answer1percentage)

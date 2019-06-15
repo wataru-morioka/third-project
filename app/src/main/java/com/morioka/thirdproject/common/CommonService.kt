@@ -91,16 +91,16 @@ class CommonService {
         var authenChannel: ManagedChannel? = null
 
         try {
-//            authenChannel = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-//                .usePlaintext()
-//                .build()
+            authenChannel = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+                .usePlaintext()
+                .build()
 
-            authenChannel = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-                                                .sslContext(
-                                                    GrpcSslContexts.forClient()
-                                                        .trustManager(SingletonService().getAppContext().classLoader.getResourceAsStream("cacert.pem"))
-                                                        .build())
-                                                .build()
+//            authenChannel = NettyChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+//                                                .sslContext(
+//                                                    GrpcSslContexts.forClient()
+//                                                        .trustManager(SingletonService().getAppContext().classLoader.getResourceAsStream("cacert.pem"))
+//                                                        .build())
+//                                                .build()
         } catch (e: Exception) {
             authenChannel?.shutdown()
             println("サーバに接続に失敗")
@@ -118,9 +118,8 @@ class CommonService {
         var userInfo: UserInfo? = null
 
         val response: LoginResult
-        response = agent.login(request)
         try {
-//            response = agent.login(request)
+            response = agent.login(request)
         } catch (e: Exception) {
             println("ログイン処理中サーバとの接続に失敗")
             authenChannel?.shutdown()
