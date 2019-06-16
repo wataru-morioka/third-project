@@ -44,10 +44,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun notify(remoteMessage: RemoteMessage){
+
         // プッシュメッセージのdataに含めた値を取得
         val data = remoteMessage.data
-        val owner = data["owner"]
         val type = data["type"]
+        if (type == "activeCheck") {
+            return
+        }
+        val owner = data["owner"]
 //        val questionId = data["questionId"]
         val questionSeq = Integer.parseInt(data["questionSeq"]!!)
         val question = data["question"]

@@ -137,6 +137,10 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question?.timeLimit)
 
         if (now > timeLimit) {
+            answer1_number_tv.visibility = View.INVISIBLE
+            answer2_number_tv.visibility = View.INVISIBLE
+            answer1_percentage_tv.visibility = View.INVISIBLE
+            answer2_percentage_tv.visibility = View.INVISIBLE
             extend_tv.visibility = View.INVISIBLE
             your_choice_tv.visibility = View.INVISIBLE
             answer_spinner.visibility = View.INVISIBLE
@@ -189,8 +193,8 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
                 _dbContext?.beginTransaction()
                 _dbContext!!.questionFactory().update(question)
 
-                var connection: Connection? = null
-                var channel: Channel? = null
+                val connection: Connection?
+                val channel: Channel?
 
                 try {
                     val factory = CommonService().getFactory()
@@ -230,7 +234,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
                     println("キューメッセージ送信に成功しました")
                     println(" [x] Sent '$message'")
                     runOnUiThread{
-                        Toast.makeText(this@DetailOthersQuestionActivity, "キューメッセージ送信に成功しました", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@DetailOthersQuestionActivity, "回答送信に成功しました", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
                     println("キューメッセージ送信に失敗しました")
@@ -242,7 +246,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 //                    (_dbContext as AppDatabase).questionFactory().update(question)
 
                     runOnUiThread{
-                        Toast.makeText(this@DetailOthersQuestionActivity, "キューメッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@DetailOthersQuestionActivity, "回答送信に失敗しました", Toast.LENGTH_SHORT).show()
                     }
                 } finally {
                     _dbContext?.endTransaction()

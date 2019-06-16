@@ -1,5 +1,6 @@
 package com.morioka.thirdproject.model
 
+import android.arch.persistence.room.ColumnInfo
 import android.arch.persistence.room.Entity
 import android.arch.persistence.room.PrimaryKey
 
@@ -7,7 +8,9 @@ import android.arch.persistence.room.PrimaryKey
 class Question {
     @PrimaryKey(autoGenerate = true)
     var id: Long = 0
+    @ColumnInfo(index = true)
     var questionSeq: Long = 0
+    @ColumnInfo(index = true)
     var owner: String = ""
     var question: String = ""
     var answer1: String = ""
@@ -20,7 +23,9 @@ class Question {
     var timeLimit: String? = null
     var confirmationFlag: Boolean = false
     var determinationFlag: Boolean = false
+    @ColumnInfo(index = true)
     var createdDateTime: String = ""
+    @ColumnInfo(index = true)
     var modifiedDateTime: String? = null
     var deleteFlag: Boolean? = false
 }

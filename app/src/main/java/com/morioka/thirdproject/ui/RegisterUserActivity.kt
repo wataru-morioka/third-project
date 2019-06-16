@@ -192,13 +192,13 @@ class RegisterUserActivity : AppCompatActivity() {
             }
         }
 
-        //TODO 暗号化
-        val authenServer = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+        var authenChannel: ManagedChannel? = null
+        authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
             .sslSocketFactory(CommonService().createSocketFactory())
             .build()
 
-        val agent = AuthenGrpc.newBlockingStub(authenServer)
+        val agent = AuthenGrpc.newBlockingStub(authenChannel)
 
         _userId = registration_id.text.toString()
         val request = RegistrationRequest.newBuilder()
@@ -213,14 +213,14 @@ class RegisterUserActivity : AppCompatActivity() {
         } catch (e: Exception){
             _dialog.dismiss()
             Toast.makeText(this@RegisterUserActivity, "サーバに接続できません", Toast.LENGTH_SHORT).show()
-            authenServer.shutdown()
+            authenChannel?.shutdown()
             return
         }
 
         if (!response.result){
             _dialog.dismiss()
             Toast.makeText(this@RegisterUserActivity, "そのIDはすでに登録されています", Toast.LENGTH_SHORT).show()
-            authenServer.shutdown()
+            authenChannel?.shutdown()
             return
         }
 
@@ -247,7 +247,7 @@ class RegisterUserActivity : AppCompatActivity() {
         intent.putExtra(SingletonService.USER_ID, _userId)
         startActivity(intent)
 
-        authenServer.shutdown()
+        authenChannel?.shutdown()
     }
 
     //トークンが更新されたことを検知

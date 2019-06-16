@@ -170,7 +170,7 @@ class MemberStatus : Fragment() {
         } catch (e: Exception) {
             _dialog.dismiss()
             activity?.runOnUiThread{
-                Toast.makeText(activity, "更新に失敗しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, "サーバに接続できません", Toast.LENGTH_SHORT).show()
             }
             socketServer.shutdown()
             return

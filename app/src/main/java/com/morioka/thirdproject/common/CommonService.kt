@@ -45,14 +45,14 @@ class CommonService {
 
     fun getStatusData(): ArrayList<Target> {
         val statusList = ArrayList<Target>()
-        statusList.add(Target(0, "bronze", 10))
-        statusList.add(Target(1, "silver", 50))
-        statusList.add(Target(2, "gold", 100))
+        statusList.add(Target(0, "Bronze", 10))
+        statusList.add(Target(1, "Silver", 50))
+        statusList.add(Target(2, "Gold", 100))
         return statusList
     }
 
     fun getDbContext(context: Context): AppDatabase {
-        return Room.databaseBuilder(context, AppDatabase::class.java, "thirdProject")
+        return Room.databaseBuilder(context, AppDatabase::class.java, SingletonService.SQLITE_DATABASE_NAME)
 //            .addMigrations(object: Migration (2, 3) {
 //                override fun migrate(database: SupportSQLiteDatabase) {
 //                    database.execSQL("ALTER TABLE questioni ADD confirmationFlag not null")

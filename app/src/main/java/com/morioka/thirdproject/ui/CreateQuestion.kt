@@ -162,8 +162,8 @@ class CreateQuestion : Fragment() {
                 //DBに登録し、その際のquestionIdを取得
                 val questionId = registerQuestion(selectedTarget.targetNumber)
 
-                var connection: Connection? = null
-                var channel: Channel? = null
+                val connection: Connection?
+                val channel: Channel?
 
                 try {
                     val factory = CommonService().getFactory()
@@ -175,7 +175,7 @@ class CreateQuestion : Fragment() {
                     _dbContext?.endTransaction()
                     _dialog.dismiss()
                     activity?.runOnUiThread{
-                        Toast.makeText(context!!, "サーバとの接続に失敗しました", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context!!, "サーバに接続できません", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -188,7 +188,7 @@ class CreateQuestion : Fragment() {
                     answer1_tv.text.toString(),
                     answer2_tv.text.toString(),
                     selectedTarget.targetNumber,
-                    5
+                    3
                 )
 
                 //クラスオベジェクトをJSON文字列にデシリアライズ
