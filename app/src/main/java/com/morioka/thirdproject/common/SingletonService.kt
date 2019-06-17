@@ -10,7 +10,7 @@ class SingletonService : Application() {
     }
 
     companion object {
-        const val HOST = "192.168.0.100"
+        const val HOST = "10.0.2.2"
         const val VIRTUAL_HOST = "/third-project"
         const val RABBITMQ_USER  = "rabbitmq"
         const val RABBITMQ_PASSWORD  = "rabbitmq"
@@ -28,6 +28,7 @@ class SingletonService : Application() {
         const val STATUS = "STATUS"
         const val USER_ID = "USER_ID"
         const val QUESTION_ID = "QUESTION_ID"
+        const val TIME_PERIOD = 3
 
         var instance: SingletonService? = null
             private set

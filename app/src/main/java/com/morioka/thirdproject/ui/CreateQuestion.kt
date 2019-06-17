@@ -188,7 +188,7 @@ class CreateQuestion : Fragment() {
                     answer1_tv.text.toString(),
                     answer2_tv.text.toString(),
                     selectedTarget.targetNumber,
-                    3
+                    SingletonService.TIME_PERIOD
                 )
 
                 //クラスオベジェクトをJSON文字列にデシリアライズ
@@ -245,7 +245,7 @@ class CreateQuestion : Fragment() {
         question.answer1 = answer1_tv.text.toString()
         question.answer2 = answer2_tv.text.toString()
         question.targetNumber = targetNumber
-        question.timePeriod = 5
+        question.timePeriod = SingletonService.TIME_PERIOD
         question.createdDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
 
         //TODO エラー処理
