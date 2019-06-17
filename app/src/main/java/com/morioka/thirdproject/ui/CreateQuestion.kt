@@ -144,7 +144,7 @@ class CreateQuestion : Fragment() {
                 return@setOnClickListener
             }
 
-            _dialog.show(fragmentManager , "test")
+            _dialog.show(fragmentManager , "progress")
 
             //質問をキューサーバに送信
             askMyQuestionin()

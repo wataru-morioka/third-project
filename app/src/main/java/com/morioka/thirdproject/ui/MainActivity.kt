@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     private var _sessionId: String? = null
     private var _status: Int = 0
     private var _userId:String? = null
-    private var _socketServer: ManagedChannel? = null
+    private var _socketChannel: ManagedChannel? = null
     private var _maintenanceSessionFlag = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,8 +79,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             println("MainActivityが復元")
 
             //サーバとのセッションを破棄
-            if (_socketServer != null) {
-                _socketServer?.shutdown()
+            if (_socketChannel != null) {
+                _socketChannel?.shutdown()
             }
             _sessionId = null
 
@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
         //セッション維持
         GlobalScope.launch {
-            maintainSession()
+            maintainSession(user.userId)
         }
     }
 
@@ -130,7 +130,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     override fun onConnect() {
         println("オンライン")
         //ネットワークに接続した時の処理
-        if (_socketServer != null && !_sessionId.isNullOrEmpty()) {
+        if (_socketChannel != null && !_sessionId.isNullOrEmpty()) {
             println("セッションが残っている")
             return
         }
@@ -138,13 +138,13 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         //ログイン
         val userInfo = CommonService().login(_dbContext!!)
 
-        if (userInfo?.sessionId.isNullOrEmpty()) {
+        if (userInfo.sessionId.isNullOrEmpty()) {
             return
         }
 
-        _sessionId = userInfo?.sessionId
-        _status = userInfo?.status ?: 0
-        _userId = userInfo?.userId
+        _sessionId = userInfo.sessionId
+        _status = userInfo.status
+        _userId = userInfo.userId
         _maintenanceSessionFlag = true
 
         //サーバとセッション確立
@@ -155,7 +155,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     override fun onDisconnect() {
         println("オフライン")
         _maintenanceSessionFlag = false
-        _socketServer?.shutdown()
+        _socketChannel?.shutdown()
         _sessionId = null
     }
 
@@ -168,7 +168,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
     override fun onDestroy() {
         super.onDestroy()
-        _socketServer?.shutdown()
+        _socketChannel?.shutdown()
         println("MainActivityが破棄されました")
     }
 
@@ -193,11 +193,11 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     private fun createSession() {
         println("サーバとセッション確立開始")
 
-        _socketServer = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
+        _socketChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
             .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
             .sslSocketFactory(CommonService().createSocketFactory())
             .build()
-        val agent = SocketGrpc.newStub(_socketServer)
+        val agent = SocketGrpc.newStub(_socketChannel)
 
         val request = InfoRequest.newBuilder()
             .setSessionId(_sessionId)
@@ -240,7 +240,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
                 //TODO
                 println("サーバとの接続が切れた、もしくはサーバ側に障害が発生、もしくはクライアントのデータ処理に失敗")
                 println(t)
-                _socketServer?.shutdown()
+                _socketChannel?.shutdown()
             }
 
             override fun onCompleted() {
@@ -255,7 +255,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     }
 
     //セッション維持処理
-    private fun maintainSession(){
+    private fun maintainSession(userId: String){
         while (_maintenanceSessionFlag) {
             if (!_maintenanceSessionFlag) {
                 Thread.sleep(30000)
@@ -272,7 +272,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             val request = MaintenanceRequest.newBuilder()
                 .setSessionId(_sessionId)
-                .setUserId(_userId)
+                .setUserId(userId)
                 .build()
 
             var result = false

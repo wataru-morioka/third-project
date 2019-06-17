@@ -121,7 +121,7 @@ class CommonService {
     }
 
     //ログイン処理
-    fun login(_dbContext: AppDatabase): UserInfo? {
+    fun login(_dbContext: AppDatabase): UserInfo {
         println("ログイン処理開始")
 
         val token = getToken()
@@ -134,22 +134,21 @@ class CommonService {
         }
 
         val userId = user?.userId
-        var authenChannel: ManagedChannel? = null
+//        val authenChannel: ManagedChannel?
+//        try {
+////            authenChannel = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+////                .usePlaintext()
+////                .build()
+//        } catch (e: Exception) {
+//            println("サーバに接続に失敗")
+//            e.printStackTrace()
+//            return UserInfo(token, userId, null, user?.status ?: 0)
+//        }
 
-        try {
-//            authenChannel = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-//                .usePlaintext()
-//                .build()
-            authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-                .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
-                .sslSocketFactory(createSocketFactory())
-                .build()
-        } catch (e: Exception) {
-            println("サーバに接続に失敗")
-            e.printStackTrace()
-            authenChannel?.shutdown()
-            return null
-        }
+        val authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
+            .sslSocketFactory(createSocketFactory())
+            .build()
 
         val agent = AuthenGrpc.newBlockingStub(authenChannel)
 
@@ -159,8 +158,6 @@ class CommonService {
             .setToken(token ?: "")
             .build()
 
-        var userInfo: UserInfo? = null
-
         val response: LoginResult
 
         try {
@@ -168,14 +165,13 @@ class CommonService {
         } catch (e: Exception) {
             println("ログイン処理中サーバとの接続に失敗")
             authenChannel?.shutdown()
-            return userInfo
+            return UserInfo(token, userId, null, user?.status ?: 0)
         }
 
         println("res : " + response.sessionId + response.status)
-        userInfo = UserInfo(token, userId, response.sessionId, response.status)
         authenChannel?.shutdown()
 
-        return userInfo
+        return UserInfo(token, userId, response.sessionId, response.status)
     }
 
     //メッセージングサーバの接続情報を取得

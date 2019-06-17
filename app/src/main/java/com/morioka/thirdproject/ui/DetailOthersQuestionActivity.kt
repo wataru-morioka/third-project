@@ -162,7 +162,8 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
             // ダイアログを作成して表示
             AlertDialog.Builder(this).apply {
                 setMessage("本当に送信しますか？")
-                setPositiveButton("oK", DialogInterface.OnClickListener { _, _ ->
+                setPositiveButton("oK", DialogInterface.OnClickListener { alertDialog, _ ->
+                    alertDialog.dismiss()
                     val decision = answer_spinner.selectedItem as Int
 
                     //回答送信処理
@@ -179,7 +180,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
     //回答送信処理
     private fun submitMyDecision(decision: Int, questionId: Long){
-        _dialog.show(supportFragmentManager , "test")
+        _dialog.show(supportFragmentManager , "progress")
 
         runBlocking {
             GlobalScope.launch {

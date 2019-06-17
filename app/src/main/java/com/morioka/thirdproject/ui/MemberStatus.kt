@@ -140,8 +140,8 @@ class MemberStatus : Fragment() {
             // ダイアログを作成して表示
             AlertDialog.Builder(context).apply {
                 setMessage("本当に更新しますか？")
-                setPositiveButton("oK", DialogInterface.OnClickListener { _, _ ->
-                    _dialog.show(fragmentManager, "test")
+                setPositiveButton("oK", DialogInterface.OnClickListener { alertDialog, _ ->
+                    alertDialog.dismiss()
                     //更新処理
                     updateStatus(_sessionId, updatedItem.status)
                 })
@@ -153,11 +153,13 @@ class MemberStatus : Fragment() {
 
     //ステータス更新処理
     private fun updateStatus(sessionId: String?, status: Int){
-        val socketServer = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
+        _dialog.show(fragmentManager, "progress")
+
+        val socketChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
             .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
             .sslSocketFactory(CommonService().createSocketFactory())
             .build()
-        val agent = SocketGrpc.newBlockingStub(socketServer)
+        val agent = SocketGrpc.newBlockingStub(socketChannel)
 
         val request = UpdateRequest.newBuilder()
             .setSessionId(sessionId ?: "")
@@ -172,7 +174,7 @@ class MemberStatus : Fragment() {
             activity?.runOnUiThread{
                 Toast.makeText(activity, "サーバに接続できません", Toast.LENGTH_SHORT).show()
             }
-            socketServer.shutdown()
+            socketChannel.shutdown()
             return
         }
 
@@ -181,7 +183,7 @@ class MemberStatus : Fragment() {
             activity?.runOnUiThread{
                 Toast.makeText(activity, "更新に失敗しました", Toast.LENGTH_SHORT).show()
             }
-            socketServer.shutdown()
+            socketChannel.shutdown()
         }
 
         runBlocking {
@@ -201,7 +203,7 @@ class MemberStatus : Fragment() {
         activity?.runOnUiThread{
             Toast.makeText(activity, "更新が完了しました", Toast.LENGTH_SHORT).show()
         }
-        socketServer.shutdown()
+        socketChannel.shutdown()
     }
 
 //    // TODO: Rename method, update argument and hook method into UI event

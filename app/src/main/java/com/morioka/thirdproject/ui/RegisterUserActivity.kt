@@ -28,6 +28,7 @@ import java.security.Security
 import java.text.SimpleDateFormat
 import java.util.*
 import android.os.Vibrator
+import android.view.View
 import com.morioka.thirdproject.model.UserInfo
 import com.squareup.okhttp.ConnectionSpec
 import io.grpc.ManagedChannel
@@ -69,9 +70,9 @@ class RegisterUserActivity : AppCompatActivity() {
             //ユーザ登録済みだった場合、サーバにセッションをもらいメイン画面へ遷移
             val userInfo = CommonService().login(_dbContext!!)
 
-            _sessionId = userInfo?.sessionId
-            _status = userInfo?.status ?: 0
-            _userId = userInfo?.userId
+            _sessionId = userInfo.sessionId
+            _status = userInfo.status
+            _userId = userInfo.userId
 
             //メイン画面へ遷移
             moveToMainActivity(userInfo)
@@ -87,29 +88,31 @@ class RegisterUserActivity : AppCompatActivity() {
 
             //ユーザ登録画面表示
             setContentView(R.layout.register_user)
+
             register_bt.setOnClickListener {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     _vib?.vibrate(_vibrationEffect)
                 } else {
                     _vib?.vibrate(100)
                 }
-                runOnUiThread {
-                    val userId = registration_id.text.toString()
-                    if (userId.isEmpty()){
-                        Toast.makeText(this@RegisterUserActivity, "IDを入力してください", Toast.LENGTH_SHORT).show()
-                        return@runOnUiThread
-                    }
 
-                    // ダイアログを作成して表示
-                    AlertDialog.Builder(this@RegisterUserActivity).apply {
-                        setMessage("『${userId}』を本当に登録しますか？")
-                        setPositiveButton("oK", DialogInterface.OnClickListener { _, _ ->
-                            //登録リクエスト非同期通信
-                            registerUser()
-                        })
-                        setNegativeButton("cancel", null)
-                        show()
-                    }
+
+                val userId = registration_id.text.toString()
+                if (userId.isEmpty()){
+                    Toast.makeText(this@RegisterUserActivity, "IDを入力してください", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                // ダイアログを作成して表示
+                AlertDialog.Builder(this@RegisterUserActivity).apply {
+                    setMessage("『${userId}』を本当に登録しますか？")
+                    setPositiveButton("oK", DialogInterface.OnClickListener { alertDialog, _ ->
+                        alertDialog.dismiss()
+                        //登録リクエスト非同期通信
+                        registerUser()
+                    })
+                    setNegativeButton("cancel", null)
+                    show()
                 }
             }
         }
@@ -131,9 +134,9 @@ class RegisterUserActivity : AppCompatActivity() {
         //トークン取得
         val _token = CommonService().getToken()
 
-        //ユーザ情報取得
-        _sessionId = intent.getStringExtra(SingletonService.SESSION_ID)
-        _status = intent.getIntExtra(SingletonService.STATUS, 0)
+//        //ユーザ情報取得
+//        _sessionId = intent.getStringExtra(SingletonService.SESSION_ID)
+//        _status = intent.getIntExtra(SingletonService.STATUS, 0)
 
         val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
         // Broadcast を受け取る BroadcastReceiver を設定
@@ -149,7 +152,11 @@ class RegisterUserActivity : AppCompatActivity() {
         CheckMyInfoAsyncTask().execute()
     }
 
-
+//    override fun onSaveInstanceState(outState: Bundle) {
+//        super.onSaveInstanceState(outState)
+//        outState.putString(SingletonService.SESSION_ID, _sessionId)
+//        outState.putInt(SingletonService.STATUS, _status)
+//    }
 
     override fun onRestart() {
         super.onRestart()
@@ -171,18 +178,18 @@ class RegisterUserActivity : AppCompatActivity() {
     }
 
     //メイン画面へ遷移
-    private fun moveToMainActivity(userInfo: UserInfo?) {
+    private fun moveToMainActivity(userInfo: UserInfo) {
         val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
-        intent.putExtra(SingletonService.SESSION_ID, userInfo?.sessionId)
-        intent.putExtra(SingletonService.STATUS, userInfo?.status)
-        intent.putExtra(SingletonService.USER_ID, userInfo?.userId)
+        intent.putExtra(SingletonService.SESSION_ID, userInfo.sessionId)
+        intent.putExtra(SingletonService.STATUS, userInfo.status)
+        intent.putExtra(SingletonService.USER_ID, userInfo.userId)
         startActivity(intent)
     }
 
     //ユーザ登録処理
     private fun registerUser() {
         println("ユーザ登録処理開始")
-        _dialog.show(supportFragmentManager, "test")
+        _dialog.show(supportFragmentManager, "progress")
 
         var token = CommonService().getToken()
         if (token.isNullOrEmpty()) {
@@ -192,8 +199,7 @@ class RegisterUserActivity : AppCompatActivity() {
             }
         }
 
-        var authenChannel: ManagedChannel? = null
-        authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+        val authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
             .sslSocketFactory(CommonService().createSocketFactory())
             .build()
