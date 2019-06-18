@@ -33,10 +33,6 @@ import kotlin.collections.ArrayList
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = SingletonService.SESSION_ID
-private const val ARG_PARAM2 = SingletonService.STATUS
-private const val ARG_PARAM3 = SingletonService.USER_ID
-private const val QUEUE_NAME = SingletonService.QUESTION
 
 /**
  * A simple [Fragment] subclass.
@@ -57,20 +53,20 @@ class CreateQuestion : Fragment() {
     private var _dbContext: AppDatabase? = null
     private var _vib: Vibrator? = null
     private var _vibrationEffect: VibrationEffect? = null
+    private var _currentPosition: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            _sessionId = it.getString(ARG_PARAM1)
-            _userId = it.getString(ARG_PARAM3)
+            _sessionId = it.getString(SingletonService.SESSION_ID)
+            _userId = it.getString(SingletonService.USER_ID)
+            _currentPosition = it.getInt(SingletonService.CURRENT_POSITION)
         }
 
         _dbContext = CommonService().getDbContext(context!!)
 
         _vib = activity?.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            _vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
-        }
+        _vibrationEffect = CommonService().getVibEffect()
     }
 
     override fun onCreateView(
@@ -98,9 +94,8 @@ class CreateQuestion : Fragment() {
         }
 
         val targetList = CommonService().getStatusData().filter{ x -> x.status <= _status} as ArrayList<Target>
+        target_spinner.adapter = TargetSpinnerAdapter(context!!, targetList)
 
-        val adapter = TargetSpinnerAdapter(context!!, targetList)
-        target_spinner.adapter = adapter
         // リスナーを登録
         target_spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener{
             // アイテムが選択された時
@@ -157,96 +152,101 @@ class CreateQuestion : Fragment() {
 
         runBlocking {
             GlobalScope.launch {
-                _dbContext?.beginTransaction()
+                _dbContext!!.run {
+                    //トランザクション開始
+                    beginTransaction()
 
-                //DBに登録し、その際のquestionIdを取得
-                val questionId = registerQuestion(selectedTarget.targetNumber)
+                    //DBに登録し、その際のquestionIdを取得
+                    val questionId = registerQuestion(selectedTarget.targetNumber)
 
-                val connection: Connection?
-                val channel: Channel?
+                    val connection: Connection?
+                    val channel: Channel?
 
-                try {
-                    val factory = CommonService().getFactory()
-                    connection = factory.newConnection()
-                    channel = connection.createChannel()
-                    channel.queueDeclare(QUEUE_NAME, true, false, false, null)
-                } catch (e: Exception) {
-                    println("エラー：キューサーバとの接続に失敗")
-                    _dbContext?.endTransaction()
-                    _dialog.dismiss()
-                    activity?.runOnUiThread{
-                        Toast.makeText(context!!, "サーバに接続できません", Toast.LENGTH_SHORT).show()
+                    try {
+                        val factory = CommonService().getFactory()
+                        connection = factory.newConnection()
+                        channel = connection.createChannel()
+                        channel.queueDeclare(SingletonService.QUESTION, true, false, false, null)
+                    } catch (e: Exception) {
+                        println("エラー：キューサーバとの接続に失敗")
+                        endTransaction()
+                        _dialog.dismiss()
+                        activity?.runOnUiThread{
+                            Toast.makeText(context!!, "サーバに接続できません", Toast.LENGTH_SHORT).show()
+                        }
+                        return@launch
                     }
-                    return@launch
-                }
 
-                //メッセージ作成
-                val questionRequest = QuestionRequest(
-                    _userId ?: "",
-                    questionId,
-                    question_tv.text.toString(),
-                    answer1_tv.text.toString(),
-                    answer2_tv.text.toString(),
-                    selectedTarget.targetNumber,
-                    SingletonService.TIME_PERIOD
-                )
+                    //メッセージ作成
+                    val questionRequest = QuestionRequest(
+                        _userId ?: "",
+                        questionId,
+                        question_tv.text.toString(),
+                        answer1_tv.text.toString(),
+                        answer2_tv.text.toString(),
+                        selectedTarget.targetNumber,
+                        SingletonService.TIME_PERIOD
+                    )
 
-                //クラスオベジェクトをJSON文字列にデシリアライズ
-                val message = Gson().toJson(questionRequest)
+                    //クラスオベジェクトをJSON文字列にデシリアライズ
+                    val message = Gson().toJson(questionRequest)
 
-                try {
-                    channel.txSelect()
+                    try {
+                        channel.run {
+                            channel.txSelect()
+                            channel.basicPublish("", SingletonService.QUESTION, null, message.toByteArray(charset("UTF-8")))
+                            channel.txCommit()
+                        }
 
-                    channel.basicPublish("", QUEUE_NAME, null, message.toByteArray(charset("UTF-8")))
+                        println("メッセージ送信に成功しました")
+                        println(" [x] Sent '$message'")
+                        _listener?.onFragmentInteraction(_currentPosition)
 
-                    channel.txCommit()
+                        //コミット
+                        setTransactionSuccessful()
 
-                    println("メッセージ送信に成功しました")
-                    println(" [x] Sent '$message'")
-                    _listener?.onFragmentInteraction(2)
+                        //画面をクリア
+                        activity?.runOnUiThread{
+                            //TODO リセット処理
+                            question_tv.setText("")
+                            answer1_tv.setText("")
+                            answer2_tv.setText("")
+                            Toast.makeText(activity, "送信が完了しました", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        println("メッセージ送信に失敗しました")
 
-                    _dbContext?.setTransactionSuccessful()
+                        channel.txRollback()
 
-                    //画面をクリア
-                    activity?.runOnUiThread{
-                        //TODO リセット処理
-                        question_tv.setText("")
-                        answer1_tv.setText("")
-                        answer2_tv.setText("")
-                        Toast.makeText(activity, "送信が完了しました", Toast.LENGTH_SHORT).show()
+                        val deleteQuestion = questionFactory().getQuestionById(questionId)
+                        questionFactory().delete(deleteQuestion)
+
+                        //画面をクリア
+                        activity?.runOnUiThread{
+                            Toast.makeText(activity, "メッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
+                        }
+                    } finally {
+                        endTransaction()
+                        channel.close()
+                        connection.close()
+                        _dialog.dismiss()
                     }
-                } catch (e: Exception) {
-                    println("メッセージ送信に失敗しました")
-
-                    channel.txRollback()
-
-                    val deleteQuestion = _dbContext!!.questionFactory().getQuestionById(questionId)
-                    _dbContext!!.questionFactory().delete(deleteQuestion)
-
-                    //画面をクリア
-                    activity?.runOnUiThread{
-                        Toast.makeText(activity, "メッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
-                    }
-                } finally {
-                    _dbContext?.endTransaction()
-                    channel.close()
-                    connection.close()
-                    _dialog.dismiss()
                 }
             }.join()
         }
     }
 
     //DBに登録し、その際のquestionIdを取得
-    private fun registerQuestion(targetNumber: Int): Long{
-        val question = Question()
-        question.owner = SingletonService.OWN
-        question.question = question_tv.text.toString()
-        question.answer1 = answer1_tv.text.toString()
-        question.answer2 = answer2_tv.text.toString()
-        question.targetNumber = targetNumber
-        question.timePeriod = SingletonService.TIME_PERIOD
-        question.createdDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
+    private fun registerQuestion(targetNum: Int): Long{
+        val question = Question().apply {
+            owner = SingletonService.OWN
+            question = question_tv.text.toString()
+            answer1 = answer1_tv.text.toString()
+            answer2 = answer2_tv.text.toString()
+            targetNumber = targetNum
+            timePeriod = SingletonService.TIME_PERIOD
+            createdDateTime = CommonService().getNow()
+        }
 
         //TODO エラー処理
         return _dbContext!!.questionFactory().insert(question)
@@ -262,25 +262,33 @@ class CreateQuestion : Fragment() {
             return
         }
 
-        if (target_tv.isEnabled){
-            target_bt.setBackgroundResource(R.drawable.edit_button_style)
-            target_bt.text = "編集"
+        if (target_tv.isEnabled) {
+            target_bt.apply {
+                setBackgroundResource(R.drawable.edit_button_style)
+                text = "編集"
+            }
             target_tv.isEnabled = false
-        }else{
-            target_bt.setBackgroundResource(R.drawable.confirm_button_style)
-            target_bt.text = "確定"
+        } else {
+            target_bt.apply {
+                setBackgroundResource(R.drawable.confirm_button_style)
+                text = "確定"
+            }
             target_tv.isEnabled = true
         }
     }
 
     private fun changeSpinnerStyle(target_spinner: Spinner, target_bt: Button){
         if (target_spinner.isEnabled){
-            target_bt.setBackgroundResource(R.drawable.edit_button_style)
-            target_bt.text = "編集"
+            target_bt.apply {
+                setBackgroundResource(R.drawable.edit_button_style)
+                text = "編集"
+            }
             target_spinner.isEnabled = false
-        }else{
-            target_bt.setBackgroundResource(R.drawable.confirm_button_style)
-            target_bt.text = "確定"
+        } else {
+            target_bt.apply {
+                setBackgroundResource(R.drawable.confirm_button_style)
+                text = "確定"
+            }
             target_spinner.isEnabled = true
         }
     }
@@ -302,10 +310,6 @@ class CreateQuestion : Fragment() {
 
     override fun onStart() {
         super.onStart()
-
-        println("onStart")
-
-
     }
 
     /**
@@ -336,12 +340,13 @@ class CreateQuestion : Fragment() {
          */
         // TODO: Rename and change types and number of parameters
         @JvmStatic
-        fun newInstance(sessionId: String?, user: User) =
+        fun newInstance(sessionId: String?, user: User, position: Int) =
             CreateQuestion().apply {
                 arguments = Bundle().apply {
-                    putString(ARG_PARAM1, sessionId)
-                    putInt(ARG_PARAM2, user.status)
-                    putString(ARG_PARAM3, user.userId)
+                    putString(SingletonService.SESSION_ID, sessionId)
+                    putInt(SingletonService.STATUS, user.status)
+                    putString(SingletonService.USER_ID, user.userId)
+                    putInt(SingletonService.CURRENT_POSITION, position)
                 }
             }
     }

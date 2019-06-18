@@ -35,11 +35,6 @@ import java.lang.Exception
 
 
 // TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = SingletonService.SESSION_ID
-private const val ARG_PARAM2 = SingletonService.STATUS
-private const val ARG_PARAM3 = SingletonService.USER_ID
-
 /**
  * A simple [Fragment] subclass.
  * Activities that contain this fragment must implement the
@@ -59,29 +54,27 @@ class MemberStatus : Fragment() {
     private var _dbContext: AppDatabase? = null
     private var _vib: Vibrator? = null
     private var _vibrationEffect: VibrationEffect? = null
+    private var _currentPosition: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            _sessionId = it.getString(ARG_PARAM1)
-            //_status = it.getInt(ARG_PARAM2)
-            _userId = it.getString(ARG_PARAM3)
+            _sessionId = it.getString(SingletonService.SESSION_ID)
+            //_status = it.getInt(SingletonService.STATUS)
+            _userId = it.getString(SingletonService.USER_ID)
+            _currentPosition = it.getInt(SingletonService.CURRENT_POSITION)
         }
 
         _dbContext = CommonService().getDbContext(context!!)
 
         _vib = activity?.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            _vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
-        }
-        println("onCreate")
+        _vibrationEffect = CommonService().getVibEffect()
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        println("onCreateView")
 
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_member_status, container, false)
@@ -105,10 +98,10 @@ class MemberStatus : Fragment() {
         val presentStatus = statusList.find{x -> x.status == _status} as Target
         present_status_tv.text = presentStatus.name
 
-        val context: Context = context!!
-        val adapter = TargetSpinnerAdapter(context, statusList)
-        max_target_spinner.adapter = adapter
-        max_target_spinner.setSelection(presentStatus.status)
+        max_target_spinner.apply {
+            adapter = TargetSpinnerAdapter(context!!, statusList)
+            setSelection(presentStatus.status)
+        }
 
         // リスナーを登録
         max_target_spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener{
@@ -152,13 +145,10 @@ class MemberStatus : Fragment() {
     }
 
     //ステータス更新処理
-    private fun updateStatus(sessionId: String?, status: Int){
+    private fun updateStatus(sessionId: String?, status: Int) {
         _dialog.show(fragmentManager, "progress")
 
-        val socketChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
-            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
-            .sslSocketFactory(CommonService().createSocketFactory())
-            .build()
+        val socketChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.GRPC_PORT)
         val agent = SocketGrpc.newBlockingStub(socketChannel)
 
         val request = UpdateRequest.newBuilder()
@@ -171,19 +161,16 @@ class MemberStatus : Fragment() {
             response = agent.updateStatus(request)
         } catch (e: Exception) {
             _dialog.dismiss()
-            activity?.runOnUiThread{
-                Toast.makeText(activity, "サーバに接続できません", Toast.LENGTH_SHORT).show()
-            }
+            displayMessage("サーバに接続できません")
             socketChannel.shutdown()
             return
         }
 
         if (!response.result) {
             _dialog.dismiss()
-            activity?.runOnUiThread{
-                Toast.makeText(activity, "更新に失敗しました", Toast.LENGTH_SHORT).show()
-            }
+            displayMessage("更新に失敗しました")
             socketChannel.shutdown()
+            return
         }
 
         runBlocking {
@@ -195,15 +182,19 @@ class MemberStatus : Fragment() {
             }.join()
         }
 
-        _listener?.onFragmentInteraction(2)
-        _listener?.onFragmentInteraction(3)
+        _listener?.onFragmentInteraction(_currentPosition - 1)
+        _listener?.onFragmentInteraction(_currentPosition)
 
         _dialog.dismiss()
 
-        activity?.runOnUiThread{
-            Toast.makeText(activity, "更新が完了しました", Toast.LENGTH_SHORT).show()
-        }
+        displayMessage("更新が完了しました")
         socketChannel.shutdown()
+    }
+
+    private fun displayMessage(message: String?) {
+        activity?.runOnUiThread{
+            Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
 //    // TODO: Rename method, update argument and hook method into UI event
@@ -254,12 +245,13 @@ class MemberStatus : Fragment() {
          */
         // TODO: Rename and change types and number of parameters
         @JvmStatic
-        fun newInstance(sessionId: String?, user: User) =
+        fun newInstance(sessionId: String?, user: User, position: Int) =
             MemberStatus().apply {
                 arguments = Bundle().apply {
-                    putString(ARG_PARAM1, sessionId)
-                    putInt(ARG_PARAM2, user.status)
-                    putString(ARG_PARAM3, user.userId)
+                    putString(SingletonService.SESSION_ID, sessionId)
+                    putInt(SingletonService.STATUS, user.status)
+                    putString(SingletonService.USER_ID, user.userId)
+                    putInt(SingletonService.CURRENT_POSITION, position)
                 }
             }
     }

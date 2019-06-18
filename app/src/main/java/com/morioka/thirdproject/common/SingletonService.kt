@@ -29,12 +29,15 @@ class SingletonService : Application() {
         const val USER_ID = "USER_ID"
         const val QUESTION_ID = "QUESTION_ID"
         const val TIME_PERIOD = 3
+        const val CURRENT_POSITION = "CURRENT_POSITION"
+        const val ACTIVE_CHECK = "activeCheck"
+        const val PRIVACY_POLICY_URL = "http://wtrmorioka.html.xdomain.jp/policy.html"
 
         var instance: SingletonService? = null
             private set
-    }
 
-    fun getAppContext(): Context {
-        return instance!!.applicationContext
+        fun getAppContext(): Context {
+            return instance!!.applicationContext
+        }
     }
 }

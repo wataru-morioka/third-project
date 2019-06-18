@@ -6,43 +6,25 @@ import android.os.AsyncTask
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.os.VibrationEffect
-import android.os.VibrationEffect.DEFAULT_AMPLITUDE
 import android.support.v4.content.LocalBroadcastManager
-import android.util.Log
 import android.widget.Toast
 import authen.*
-import com.google.firebase.iid.FirebaseInstanceId
 import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.common.CommonService
 import com.morioka.thirdproject.common.SingletonService
-import io.grpc.ManagedChannelBuilder
-import io.grpc.stub.StreamObserver
 import kotlinx.android.synthetic.main.register_user.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.conscrypt.Conscrypt
 import java.security.Security
-import java.text.SimpleDateFormat
-import java.util.*
 import android.os.Vibrator
-import android.view.View
 import com.morioka.thirdproject.model.UserInfo
-import com.squareup.okhttp.ConnectionSpec
-import io.grpc.ManagedChannel
-import io.grpc.netty.shaded.io.grpc.netty.NegotiationType
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLoggerFactory
 import io.grpc.netty.shaded.io.netty.util.internal.logging.JdkLoggerFactory
-import io.grpc.okhttp.OkHttpChannelBuilder
-import kotlinx.io.InputStream
-import java.io.File
-import java.io.FileInputStream
 import java.lang.Exception
-import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
-import javax.net.ssl.X509TrustManager
 
 class RegisterUserActivity : AppCompatActivity() {
     private var _sessionId: String? = null
@@ -96,7 +78,6 @@ class RegisterUserActivity : AppCompatActivity() {
                     _vib?.vibrate(100)
                 }
 
-
                 val userId = registration_id.text.toString()
                 if (userId.isEmpty()){
                     Toast.makeText(this@RegisterUserActivity, "IDを入力してください", Toast.LENGTH_SHORT).show()
@@ -123,28 +104,23 @@ class RegisterUserActivity : AppCompatActivity() {
 
         super.onCreate(savedInstanceState)
 
+        //TODO 初期画面表示→徐々に変化
+        setContentView(R.layout.init)
+
+        //ALPNプロバイダー生成
         Security.insertProviderAt(Conscrypt.newProvider(), 1)
+
         InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE)
 
         _vib = getSystemService(VIBRATOR_SERVICE) as Vibrator
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            _vibrationEffect = VibrationEffect.createOneShot(100, DEFAULT_AMPLITUDE)
-        }
+        _vibrationEffect = CommonService().getVibEffect()
 
         //トークン取得
-        val _token = CommonService().getToken()
+        _token = CommonService().getToken()
 
-//        //ユーザ情報取得
-//        _sessionId = intent.getStringExtra(SingletonService.SESSION_ID)
-//        _status = intent.getIntExtra(SingletonService.STATUS, 0)
-
+        //トークンの更新イベントレシーバ登録
         val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
-        // Broadcast を受け取る BroadcastReceiver を設定
-        // LocalBroadcast の設定
         LocalBroadcastManager.getInstance(this).registerReceiver(UpdateTokenReceiver(), messageFilter)
-
-        //TODO 初期画面表示→徐々に変化
-        setContentView(R.layout.init)
 
         _dbContext = CommonService().getDbContext(this)
 
@@ -152,37 +128,28 @@ class RegisterUserActivity : AppCompatActivity() {
         CheckMyInfoAsyncTask().execute()
     }
 
-//    override fun onSaveInstanceState(outState: Bundle) {
-//        super.onSaveInstanceState(outState)
-//        outState.putString(SingletonService.SESSION_ID, _sessionId)
-//        outState.putInt(SingletonService.STATUS, _status)
-//    }
-
     override fun onRestart() {
         super.onRestart()
         println("RegisterUserActivity再開")
         val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
-        //intent.putExtra("USER_ID", userId)
         intent.putExtra(SingletonService.SESSION_ID, _sessionId)
         intent.putExtra(SingletonService.STATUS, _status)
         intent.putExtra(SingletonService.USER_ID, _userId)
         startActivity(intent)
     }
 
-
     override fun onDestroy() {
         super.onDestroy()
-
-        //TODO アプリをアンインストールした際の処理
         println("アプリ終了")
     }
 
     //メイン画面へ遷移
     private fun moveToMainActivity(userInfo: UserInfo) {
-        val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
-        intent.putExtra(SingletonService.SESSION_ID, userInfo.sessionId)
-        intent.putExtra(SingletonService.STATUS, userInfo.status)
-        intent.putExtra(SingletonService.USER_ID, userInfo.userId)
+        val intent = Intent(this@RegisterUserActivity, MainActivity::class.java).apply {
+            putExtra(SingletonService.SESSION_ID, userInfo.sessionId)
+            putExtra(SingletonService.STATUS, userInfo.status)
+            putExtra(SingletonService.USER_ID, userInfo.userId)
+        }
         startActivity(intent)
     }
 
@@ -199,11 +166,7 @@ class RegisterUserActivity : AppCompatActivity() {
             }
         }
 
-        val authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
-            .sslSocketFactory(CommonService().createSocketFactory())
-            .build()
-
+        val authenChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
         val agent = AuthenGrpc.newBlockingStub(authenChannel)
 
         _userId = registration_id.text.toString()
@@ -219,23 +182,23 @@ class RegisterUserActivity : AppCompatActivity() {
         } catch (e: Exception){
             _dialog.dismiss()
             Toast.makeText(this@RegisterUserActivity, "サーバに接続できません", Toast.LENGTH_SHORT).show()
-            authenChannel?.shutdown()
+            authenChannel.shutdown()
             return
         }
 
         if (!response.result){
             _dialog.dismiss()
             Toast.makeText(this@RegisterUserActivity, "そのIDはすでに登録されています", Toast.LENGTH_SHORT).show()
-            authenChannel?.shutdown()
+            authenChannel.shutdown()
             return
         }
 
         //ユーザ情報を登録
-        val user = User()
-        user.userId = _userId ?: ""
-        user.password = response.password
-        val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
-        user.createdDateTime = now
+        val user = User().apply {
+            userId = _userId!!
+            password = response.password
+            createdDateTime = CommonService().getNow()
+        }
         runBlocking {
             GlobalScope.launch {
                 _dbContext!!.userFactory().insert(user)
@@ -244,22 +207,18 @@ class RegisterUserActivity : AppCompatActivity() {
 
         _dialog.dismiss()
 
-        Toast.makeText(this@RegisterUserActivity, "登録が完了いたしました", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this@RegisterUserActivity, "登録が完了しました", Toast.LENGTH_SHORT).show()
 
-        val intent = Intent(this@RegisterUserActivity, MainActivity::class.java)
-        //intent.putExtra("USER_ID", userId)
-        intent.putExtra(SingletonService.SESSION_ID, _sessionId)
-        intent.putExtra(SingletonService.STATUS, 0)
-        intent.putExtra(SingletonService.USER_ID, _userId)
-        startActivity(intent)
+        authenChannel.shutdown()
 
-        authenChannel?.shutdown()
+        //メイン画面へ遷移
+        moveToMainActivity(UserInfo(token, _userId, _sessionId, 0))
     }
 
     //トークンが更新されたことを検知
     inner class UpdateTokenReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            Log.d("DataReceiver", "onReceive")
+            println("ユーザ登録画面にてトークン取得")
 
             // Broadcast されたメッセージを取り出す
             _token = intent.getStringExtra(SingletonService.TOKEN)

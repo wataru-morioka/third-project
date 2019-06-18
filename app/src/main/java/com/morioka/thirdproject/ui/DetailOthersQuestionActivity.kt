@@ -38,8 +38,6 @@ import com.rabbitmq.client.Channel
 import com.rabbitmq.client.Connection
 import com.rabbitmq.client.ConnectionFactory
 
-private const val QUEUE_NAME = SingletonService.ANSWER
-
 class DetailOthersQuestionActivity: AppCompatActivity() {
     private val _dialog = ProgressDialog()
     private var _dbContext: AppDatabase? = null
@@ -52,23 +50,18 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         setContentView(R.layout.detail_others_question)
 
         _vib = getSystemService(VIBRATOR_SERVICE) as Vibrator
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            _vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
-        }
+        _vibrationEffect = CommonService().getVibEffect()
 
-        if (savedInstanceState != null) {
-            _questionId = savedInstanceState.getLong(SingletonService.QUESTION_ID)
-        } else {
-            _questionId = intent.getLongExtra(SingletonService.QUESTION_ID, 0)
-        }
+        _questionId = getQuestionId(savedInstanceState)
+
+        _dbContext = CommonService().getDbContext(this)
+
+        //データ更新イベントレシーバ登録
+        val messageFilter = IntentFilter(SingletonService.OTHERS)
+        LocalBroadcastManager.getInstance(this).registerReceiver(UpdateInfoReceiver(_questionId), messageFilter)
 
         //画面描画
         setScreen(_questionId)
-
-        //イベント検知レシーバーー登録
-        val messageFilter = IntentFilter(SingletonService.OTHERS)
-        // LocalBroadcast の設定
-        LocalBroadcastManager.getInstance(this).registerReceiver(UpdateInfoReceiver(_questionId), messageFilter)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -76,8 +69,14 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         outState.putLong(SingletonService.QUESTION_ID, _questionId)
     }
 
+    private fun getQuestionId(savedInstanceState: Bundle?): Long {
+        return when (savedInstanceState) {
+            null -> intent.getLongExtra(SingletonService.QUESTION_ID, 0)
+            else -> savedInstanceState.getLong(SingletonService.QUESTION_ID)
+        }
+    }
+
     private fun setScreen(questionId: Long) {
-        _dbContext = CommonService().getDbContext(this)
         var question: Question? = null
         runBlocking {
             GlobalScope.launch {
@@ -94,9 +93,7 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         answer_spinner.adapter = adapter
 
         //質問送信時間セット
-        val receiveDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question?.createdDateTime)
-        val sendDate = SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).format(receiveDateTime)
-        receive_date_tv.text = sendDate
+        receive_date_tv.text = CommonService().changeDateFormat(question?.createdDateTime!!)
 
         time_limit_tv.text = question?.timeLimit
 
@@ -126,15 +123,17 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
         }
 
         if (question?.myDecision != 0) {
-            answer_spinner.setSelection(question!!.myDecision - 1)
-            answer_spinner.isEnabled = false
+            answer_spinner.apply {
+                setSelection(question!!.myDecision - 1)
+                isEnabled = false
+            }
             answer_bt.visibility = View.INVISIBLE
             return
         }
 
         //TODO
         val now = Date()
-        val timeLimit = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question?.timeLimit)
+        val timeLimit = CommonService().getDateTime(question?.timeLimit!!)
 
         if (now > timeLimit) {
             answer1_number_tv.visibility = View.INVISIBLE
@@ -184,77 +183,79 @@ class DetailOthersQuestionActivity: AppCompatActivity() {
 
         runBlocking {
             GlobalScope.launch {
-                val question = _dbContext!!.questionFactory().getQuestionById(questionId)
-                val user = (_dbContext as AppDatabase).userFactory().getMyInfo()
-
-                //データベース更新
-                question.myDecision = decision
-                question.modifiedDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
-
-                _dbContext?.beginTransaction()
-                _dbContext!!.questionFactory().update(question)
-
-                val connection: Connection?
-                val channel: Channel?
-
-                try {
-                    val factory = CommonService().getFactory()
-                    connection = factory.newConnection()
-                    channel = connection.createChannel()
-                    channel.queueDeclare(QUEUE_NAME, true, false, false, null)
-                } catch (e: Exception) {
-                    println("サーバとの接続に失敗")
-                    _dbContext?.endTransaction()
-                    _dialog.dismiss()
-                    runOnUiThread{
-                        Toast.makeText(this@DetailOthersQuestionActivity, "サーバとの接続に失敗しました", Toast.LENGTH_SHORT).show()
+                _dbContext!!.run {
+                    val question = questionFactory().getQuestionById(questionId).apply {
+                        //データベース更新
+                        myDecision = decision
+                        modifiedDateTime = CommonService().getNow()
                     }
-                    return@launch
+                    val user = _dbContext!!.userFactory().getMyInfo()
+
+                    //トランザクション開始
+                    beginTransaction()
+
+                    questionFactory().update(question)
+
+                    val connection: Connection?
+                    val channel: Channel?
+
+                    try {
+                        val factory = CommonService().getFactory()
+                        connection = factory.newConnection()
+                        channel = connection.createChannel()
+                        channel.queueDeclare(SingletonService.ANSWER, true, false, false, null)
+                    } catch (e: Exception) {
+                        println("サーバとの接続に失敗")
+                        endTransaction()
+                        _dialog.dismiss()
+                        runOnUiThread{
+                            Toast.makeText(this@DetailOthersQuestionActivity, "サーバとの接続に失敗しました", Toast.LENGTH_SHORT).show()
+                        }
+                        return@launch
+                    }
+
+                    //メッセージ作成
+                    val answerRequest = AnswerRequest(
+                        question.questionSeq,
+                        user.userId,
+                        decision,
+                        question.timeLimit ?: ""
+                    )
+
+                    //クラスオベジェクトをJSON文字列にデシリアライズ
+                    val message = Gson().toJson(answerRequest)
+
+                    try {
+                        channel.run {
+                            txSelect()
+                            basicPublish("", SingletonService.ANSWER, null, message.toByteArray(charset("UTF-8")))
+                            txCommit()
+                        }
+
+                        //コミット
+                        setTransactionSuccessful()
+
+                        println("キューメッセージ送信に成功しました")
+                        println(" [x] Sent '$message'")
+                        runOnUiThread{
+                            Toast.makeText(this@DetailOthersQuestionActivity, "回答送信に成功しました", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        println("キューメッセージ送信に失敗しました")
+
+                        channel.txRollback()
+
+                        runOnUiThread{
+                            Toast.makeText(this@DetailOthersQuestionActivity, "回答送信に失敗しました", Toast.LENGTH_SHORT).show()
+                        }
+                    } finally {
+                        endTransaction()
+                        channel.close()
+                        connection.close()
+                        _dialog.dismiss()
+                    }
                 }
 
-                //メッセージ作成
-                val answerRequest = AnswerRequest(
-                    question.questionSeq,
-                    user.userId,
-                    decision,
-                    question.timeLimit ?: ""
-                )
-
-                //クラスオベジェクトをJSON文字列にデシリアライズ
-                val message = Gson().toJson(answerRequest)
-
-                try {
-                    channel.txSelect()
-
-                    channel.basicPublish("", QUEUE_NAME, null, message.toByteArray(charset("UTF-8")))
-
-                    channel.txCommit()
-
-                    _dbContext?.setTransactionSuccessful()
-
-                    println("キューメッセージ送信に成功しました")
-                    println(" [x] Sent '$message'")
-                    runOnUiThread{
-                        Toast.makeText(this@DetailOthersQuestionActivity, "回答送信に成功しました", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    println("キューメッセージ送信に失敗しました")
-
-                    channel.txRollback()
-
-//                    //データベース更新
-//                    question.myDecision = 0
-//                    (_dbContext as AppDatabase).questionFactory().update(question)
-
-                    runOnUiThread{
-                        Toast.makeText(this@DetailOthersQuestionActivity, "回答送信に失敗しました", Toast.LENGTH_SHORT).show()
-                    }
-                } finally {
-                    _dbContext?.endTransaction()
-                    channel.close()
-                    connection.close()
-                    _dialog.dismiss()
-                }
             }.join()
         }
     }

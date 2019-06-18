@@ -1,14 +1,11 @@
 package com.morioka.thirdproject.ui
 
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.Fragment
-import io.grpc.ManagedChannelBuilder
 import kotlinx.android.synthetic.main.activity_main.*
 import android.support.v4.view.ViewPager
 import android.widget.Toast
@@ -23,28 +20,17 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import socket.*
-import java.text.SimpleDateFormat
-import java.util.*
 import android.support.v4.content.LocalBroadcastManager
-import android.util.Log
 import authen.*
 import com.morioka.thirdproject.common.SingletonService
 import io.grpc.ManagedChannel
 import java.lang.Exception
-import android.net.NetworkInfo
 import android.net.ConnectivityManager
 import com.morioka.thirdproject.common.ReceiverService.ConnectionReceiver
 import com.morioka.thirdproject.common.ReceiverService.UpdateTokenReceiver
-import com.morioka.thirdproject.model.UserInfo
-import com.squareup.okhttp.ConnectionSpec
-import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
-import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLoggerFactory
 import io.grpc.netty.shaded.io.netty.util.internal.logging.JdkLoggerFactory
-import io.grpc.okhttp.OkHttpChannelBuilder
 import org.conscrypt.Conscrypt
-import java.io.File
-import java.io.FileInputStream
 import java.security.Security
 
 class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, CreateQuestion.OnFragmentInteractionListener,
@@ -65,6 +51,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE)
 
         _dbContext = CommonService().getDbContext(this)
+        val token = CommonService().getToken()
 
         //トークン更新監視レシーバー登録
         val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
@@ -97,27 +84,31 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
         var user = User()
 
+        //ユーザステータスをサーバに合わせる
         runBlocking {
             GlobalScope.launch {
-                user = _dbContext!!.userFactory().getMyInfo()
-                user.status = _status
-                _dbContext!!.userFactory().update(user)
+                _dbContext!!.run {
+                    user = userFactory().getMyInfo()
+                    user.status = _status
+                    userFactory().update(user)
+                }
             }.join()
         }
 
         //tabとpagerを紐付ける
-        pager.addOnPageChangeListener(this@MainActivity)
         setTabLayout(user, _sessionId)
 
         //プリバシーポリシーリンク
         privacy_policy_tv.setOnClickListener {
-            val uri = Uri.parse("http://wtrmorioka.html.xdomain.jp/policy.html")
+            val uri = Uri.parse(SingletonService.PRIVACY_POLICY_URL)
             val intent = Intent(Intent.ACTION_VIEW, uri)
             startActivity(intent)
         }
 
         if (!_sessionId.isNullOrEmpty()) {
             _maintenanceSessionFlag = true
+            //サーバとセッション確立
+            createSession()
         }
 
         //セッション維持
@@ -130,7 +121,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     override fun onConnect() {
         println("オンライン")
         //ネットワークに接続した時の処理
-        if (_socketChannel != null && !_sessionId.isNullOrEmpty()) {
+        if (!_sessionId.isNullOrEmpty()) {
             println("セッションが残っている")
             return
         }
@@ -138,7 +129,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         //ログイン
         val userInfo = CommonService().login(_dbContext!!)
 
-        if (userInfo.sessionId.isNullOrEmpty()) {
+        if (_socketChannel == null && userInfo.sessionId.isNullOrEmpty()) {
             return
         }
 
@@ -162,8 +153,6 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     override fun onRestart() {
         super.onRestart()
         println("activity再開")
-//        reViewFragment(0)
-//        reViewFragment(1)
     }
 
     override fun onDestroy() {
@@ -180,8 +169,10 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
     //タブの設定
     private fun setTabLayout(user: User, sessionId: String?) {
-        val adapter = TabsPagerAdapter(supportFragmentManager, this, user, sessionId)
-        pager.adapter = adapter
+        pager.apply {
+            addOnPageChangeListener(this@MainActivity)
+            adapter = TabsPagerAdapter(supportFragmentManager, user, sessionId)
+        }
         tabs.setupWithViewPager(pager)
 //        for (i in 0 until adapter.count) {
 //            val tab: TabLayout.Tab = tabs.getTabAt(i)!!
@@ -193,10 +184,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     private fun createSession() {
         println("サーバとセッション確立開始")
 
-        _socketChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.GRPC_PORT)
-            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
-            .sslSocketFactory(CommonService().createSocketFactory())
-            .build()
+        _socketChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.GRPC_PORT)
         val agent = SocketGrpc.newStub(_socketChannel)
 
         val request = InfoRequest.newBuilder()
@@ -229,9 +217,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
                         registerOthersQuestion(reply, agent)
                     }
                     else -> {
-                        runOnUiThread {
-                            Toast.makeText(this@MainActivity, "サーバの処理に失敗しました¥nアプリを再起動してください", Toast.LENGTH_SHORT).show()
-                        }
+                        displayMessage("サーバの処理に失敗しました¥nアプリを再起動してください")
                     }
                 }
             }
@@ -246,12 +232,16 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             override fun onCompleted() {
                 println("サーバからレスポンスを受信")
                 if (!result) {
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, "サーバの処理に失敗しました¥nアプリを再起動してください", Toast.LENGTH_SHORT).show()
-                    }
+                    displayMessage("サーバの処理に失敗しました¥nアプリを再起動してください")
                 }
             }
         })
+    }
+
+    private fun displayMessage(message: String) {
+        runOnUiThread {
+            Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     //セッション維持処理
@@ -264,10 +254,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             println("セッション維持処理")
 
-            val authenServer = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-                .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
-                .sslSocketFactory(CommonService().createSocketFactory())
-                .build()
+            val authenServer = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
             val agent = AuthenGrpc.newStub(authenServer)
 
             val request = MaintenanceRequest.newBuilder()
@@ -294,9 +281,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
                 override fun onCompleted() {
                     if (!result) {
-                        runOnUiThread {
-                            Toast.makeText(this@MainActivity, "セッション維持に失敗しました", Toast.LENGTH_SHORT).show()
-                        }
+                        displayMessage("セッション維持に失敗しました")
                     }
                     authenServer.shutdown()
                 }
@@ -308,30 +293,31 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     //質問の集計結果を登録
     private fun registerAggregationResult(reply: InfoResult, agent: SocketGrpc.SocketStub){
         println("質問の集計結果を登録")
-        val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
 
-        val question: Question
-        when (reply.owner) {
-            SingletonService.OWN ->  question = (_dbContext as AppDatabase).questionFactory().getQuestionById(reply.questionId)
-            SingletonService.OTHERS -> question = (_dbContext as AppDatabase).questionFactory().getQuestionBySeq(reply.questionSeq)
+        val question = when (reply.owner) {
+            SingletonService.OWN ->  _dbContext?.questionFactory()?.getQuestionById(reply.questionId)
+            SingletonService.OTHERS ->  _dbContext?.questionFactory()?.getQuestionBySeq(reply.questionSeq)
             else -> return
         }
 
-        question.questionSeq = reply.questionSeq
-        question.answer1number = reply.answer1Number
-        question.answer2number = reply.answer2Number
-        question.timeLimit = reply.timeLimit
-        question.confirmationFlag = false
-        question.determinationFlag = true
-        question.modifiedDateTime = now
+        question?: return
+
+        question.apply {
+            questionSeq = reply.questionSeq
+            answer1number = reply.answer1Number
+            answer2number = reply.answer2Number
+            timeLimit = reply.timeLimit
+            confirmationFlag = false
+            determinationFlag = true
+            modifiedDateTime = CommonService().getNow()
+        }
+
 
         //TODO エラー処理
         try{
             _dbContext!!.questionFactory().update(question)
         } catch(e: Exception) {
-            runOnUiThread {
-                Toast.makeText(this@MainActivity, "データの登録に失敗しました", Toast.LENGTH_SHORT).show()
-            }
+            displayMessage("データの登録に失敗しました")
             return
         }
 
@@ -342,18 +328,16 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
                     println("質問の集計結果更新イベントを周知")
                     onFragmentInteraction(0)
 
-                    // Local Broadcast で発信する（activityも再描画させる）
+                    //自分の質問の集計結果更新イベントを周知
                     val messageIntent = Intent(SingletonService.OWN)
-//                    messageIntent.putExtra("Message", time)
                     LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
                 }
                 SingletonService.OTHERS -> {
                     println("他人の集計結果更新イベントを周知")
                     onFragmentInteraction(1)
 
-                    // Local Broadcast で発信する（activityも再描画させる）
+                    //他人の集計結果更新イベントを周知
                     val messageIntent = Intent(SingletonService.OTHERS)
-//                    messageIntent.putExtra("Message", time)
                     LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
                 }
                 else -> {}
@@ -382,11 +366,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             override fun onCompleted() {
                 if (!result) {
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, "サーバの処理に失敗しました¥nアプリを再起動してください", Toast.LENGTH_SHORT).show()
-                    }
+                    displayMessage("サーバの処理に失敗しました¥nアプリを再起動してください")
                 }
-//                socketServer.shutdown()
             }
         })
     }
@@ -394,32 +375,29 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     //新着他人の質問を登録
     private fun registerOthersQuestion(reply: InfoResult, agent: SocketGrpc.SocketStub){
         println("新着他人の質問を登録")
-        val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
-
-        val count = (_dbContext as AppDatabase).questionFactory().getAlreadyCount(reply.questionSeq)
+        val count = _dbContext!!.questionFactory().getAlreadyCount(reply.questionSeq)
         if (count != 0) {
             return
         }
 
-        val question = Question()
-        question.questionSeq = reply.questionSeq
-        question.owner = reply.owner
-        question.question = reply.question
-        question.answer1 = reply.answer1
-        question.answer2 = reply.answer2
-        question.targetNumber = reply.targetNumber
-        question.timeLimit = reply.timeLimit
-        question.createdDateTime = now
+        val question = Question().apply {
+            questionSeq = reply.questionSeq
+            owner = reply.owner
+            question = reply.question
+            answer1 = reply.answer1
+            answer2 = reply.answer2
+            targetNumber = reply.targetNumber
+            timeLimit = reply.timeLimit
+            createdDateTime = CommonService().getNow()
+        }
 
         _dbContext!!.questionFactory().insert(question)
 
-        //相手の質問画面を再描画
         runOnUiThread {
+            //相手の質問画面を再描画
             onFragmentInteraction(1)
-
-            // Local Broadcast で発信する（activityも再描画させる）
+            //他人の質問を受信したころを周知
             val messageIntent = Intent(SingletonService.OTHERS)
-//                    messageIntent.putExtra("Message", time)
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent)
         }
 
@@ -444,11 +422,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             override fun onCompleted() {
                 if (!result) {
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, "サーバの処理に失敗しました¥nアプリを再起動してください", Toast.LENGTH_SHORT).show()
-                    }
+                    displayMessage("サーバの処理に失敗しました¥nアプリを再起動してください")
                 }
-//                socketServer.shutdown()
             }
         })
     }
@@ -457,13 +432,13 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
     private fun reViewFragment(position: Int){
         //アダプターを取得
         val adapter = pager.adapter
-        //instantiateItem()で今のFragmentを取得
         val fragment = adapter?.instantiateItem(pager, position) as Fragment
 
-        val transaction = supportFragmentManager.beginTransaction()
-        transaction.detach(fragment)
-        transaction.attach(fragment)
-        transaction.commitAllowingStateLoss()
+        supportFragmentManager.beginTransaction().run {
+            detach(fragment)
+            attach(fragment)
+            commitAllowingStateLoss()
+        }
     }
 
     override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}

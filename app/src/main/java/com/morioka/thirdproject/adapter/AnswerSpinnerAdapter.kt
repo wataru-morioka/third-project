@@ -22,14 +22,14 @@ class AnswerSpinnerAdapter : ArrayAdapter<Int> {
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val textView = super.getView(position, convertView, parent) as TextView
-        textView.text = getItem(position)?.toString()
-        textView.setTextColor(Color.parseColor("#F2F2F2"))
-        return textView
+        return textView.apply {
+            text = getItem(position)?.toString()
+            setTextColor(Color.parseColor("#F2F2F2"))
+        }
     }
 
     override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
         val textView = super.getDropDownView(position, convertView, parent) as TextView
-        textView.text = getItem(position)?.toString()
-        return textView
+        return textView.apply { text = getItem(position)?.toString() }
     }
 }

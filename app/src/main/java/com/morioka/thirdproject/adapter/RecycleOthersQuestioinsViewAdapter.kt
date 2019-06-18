@@ -1,53 +1,51 @@
 package com.morioka.thirdproject.adapter
 
 import android.support.v7.widget.RecyclerView
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.Question
 import com.morioka.thirdproject.viewholder.OthersQuestionViewHolder
-import java.text.SimpleDateFormat
-import java.util.*
 
-class RecycleOthersQuestioinsViewAdapter (private val questionList: List<Question>, private val listener: ListListener) : RecyclerView.Adapter<OthersQuestionViewHolder>() {
+class RecycleOthersQuestionsViewAdapter (private val questionList: List<Question>, private val listener: ListListener) : RecyclerView.Adapter<OthersQuestionViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): OthersQuestionViewHolder {
-//        Log.d("Adapter", "onCreateViewHolder")
         val rowView: View = LayoutInflater.from(parent.context).inflate(R.layout.others_question_list_item, parent, false)
         return OthersQuestionViewHolder(rowView)
     }
 
     override fun onBindViewHolder(holder: OthersQuestionViewHolder, position: Int) {
-//        Log.d("Adapter", "onBindViewHolder")
+        holder.apply {
+            //行クリックイベント登録
+            itemView.setOnClickListener {
+                listener.onClickRow(it, questionList[position])
+            }
 
-        //質問セット
-        holder.question_tv.text = questionList[position].question
+            //質問セット
+            questionTv.text = questionList[position].question
 
-        //未開封のものはアイコンを変える
-        if (!questionList[position].confirmationFlag){
-            holder.confirm_icon.setImageResource(android.R.drawable.btn_star_big_on)
-        } else {
-            holder.confirm_icon.setImageResource(android.R.drawable.star_off)
-        }
+            //未開封のものはアイコンを変える
+            if (!questionList[position].confirmationFlag){
+                confirmIcon.setImageResource(android.R.drawable.btn_star_big_on)
+            } else {
+                confirmIcon.setImageResource(android.R.drawable.star_off)
+            }
 
-        holder.itemView.setOnClickListener {
-            listener.onClickRow(it, questionList[position])
-        }
+            //集計が完了している場合
+            if (questionList[position].determinationFlag) {
+                answerIcon.visibility = View.VISIBLE
+                answerIcon.setImageResource(android.R.drawable.ic_media_play)
+                return
+            }
 
-        if (questionList[position].determinationFlag) {
-            holder.answer_icon.visibility = View.VISIBLE
-            holder.answer_icon.setImageResource(android.R.drawable.ic_media_play)
-            return
-        }
+            determinationiTv.visibility = View.INVISIBLE
 
-        holder.determinationi_tv.visibility = View.INVISIBLE
-
-        //期限内の場合、アイコン表示
-        if (questionList[position].myDecision == 0) {
-            holder.answer_icon.visibility = View.VISIBLE
-            holder.answer_icon.setImageResource(android.R.drawable.ic_menu_edit)
+            //期限内の場合、アイコン表示
+            if (questionList[position].myDecision == 0) {
+                answerIcon.visibility = View.VISIBLE
+                answerIcon.setImageResource(android.R.drawable.ic_menu_edit)
+            }
         }
     }
 

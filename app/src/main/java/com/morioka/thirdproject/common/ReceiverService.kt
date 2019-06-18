@@ -64,32 +64,23 @@ class ReceiverService {
                 .setToken(token)
                 .build()
 
-            var authenChannel: ManagedChannel? = null
-            try {
-                authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-                    .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
-                    .sslSocketFactory(CommonService().createSocketFactory())
-                    .build()
-                val agent = AuthenGrpc.newStub(authenChannel)
+            val authenChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+            val agent = AuthenGrpc.newStub(authenChannel)
+            agent.login(request, object : StreamObserver<LoginResult> {
+                override fun onNext(reply: LoginResult) {
+                    println("res : " + reply.sessionId + reply.status)
+                }
 
-                agent.login(request, object : StreamObserver<LoginResult> {
-                    override fun onNext(reply: LoginResult) {
-                        println("res : " + reply.sessionId + reply.status)
-                    }
+                override fun onError(t: Throwable?) {
+                    println("エラー：トークンの更新をサーバに送信失敗")
+                    authenChannel.shutdown()
+                }
 
-                    override fun onError(t: Throwable?) {
-                        authenChannel.shutdown()
-                    }
-
-                    override fun onCompleted() {
-                        println("トークンの更新をサーバに送信成功")
-                        authenChannel.shutdown()
-                    }
-                })
-            } catch (e: Exception) {
-                println("トークンの更新をサーバに送信エラー")
-                authenChannel?.shutdown()
-            }
+                override fun onCompleted() {
+                    println("トークンの更新をサーバに送信成功")
+                    authenChannel.shutdown()
+                }
+            })
         }
     }
 }

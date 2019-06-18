@@ -14,7 +14,7 @@ import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Question
 import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.common.CommonService
-import com.morioka.thirdproject.adapter.RecycleOwnQuestioinsViewAdapter
+import com.morioka.thirdproject.adapter.RecycleOwnQuestionsViewAdapter
 import com.morioka.thirdproject.common.SingletonService
 import kotlinx.android.synthetic.main.fragment_own_questions.*
 import kotlinx.coroutines.GlobalScope
@@ -24,9 +24,6 @@ import kotlinx.coroutines.runBlocking
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "SESSION_ID"
-private const val ARG_PARAM2 = "STATUS"
-private const val ARG_PARAM3 = "USER_ID"
 
 /**
  * A simple [Fragment] subclass.
@@ -44,13 +41,15 @@ class OwnQuestions : Fragment() {
     private var _userId: String? = null
     private var _listener: OnFragmentInteractionListener? = null
     private var _dbContext: AppDatabase? = null
+    private var _currentPosition: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            _sessionId = it.getString(ARG_PARAM1)
-            _status = it.getInt(ARG_PARAM2)
-            _userId = it.getString(ARG_PARAM3)
+            _sessionId = it.getString(SingletonService.SESSION_ID)
+            _status = it.getInt(SingletonService.STATUS)
+            _userId = it.getString(SingletonService.USER_ID)
+            _currentPosition = it.getInt(SingletonService.CURRENT_POSITION)
         }
         _dbContext = CommonService().getDbContext(context!!)
     }
@@ -82,33 +81,36 @@ class OwnQuestions : Fragment() {
             }.join()
         }
 
-        val adapter = RecycleOwnQuestioinsViewAdapter(
+        val viewAdapter = RecycleOwnQuestionsViewAdapter(
             othersQuestionList,
-            object : RecycleOwnQuestioinsViewAdapter.ListListener {
+            object : RecycleOwnQuestionsViewAdapter.ListListener {
                 override fun onClickRow(tappedView: View, question: Question) {
                     //集計結果を受信していた場合、確認フラグ更新
                     if (question.determinationFlag) {
                         runBlocking {
                             GlobalScope.launch {
                                 //確認フラグ更新
-                                val updateQuestion =
-                                    _dbContext!!.questionFactory().getQuestionById(question.id)
-                                updateQuestion.confirmationFlag = true
+                                val updateQuestion = _dbContext!!.questionFactory().getQuestionById(question.id).apply {
+                                    confirmationFlag = true
+                                }
                                 _dbContext!!.questionFactory().update(updateQuestion)
                             }.join()
                         }
                     }
-                    val intent = Intent(activity, DetailOwnQuestionActivity::class.java)
-                    intent.putExtra(SingletonService.QUESTION_ID, question.id)
+                    val intent = Intent(activity, DetailOwnQuestionActivity::class.java).apply {
+                        putExtra(SingletonService.QUESTION_ID, question.id)
+                    }
                     startActivity(intent)
 
-                    _listener?.onFragmentInteraction(0)
+                    _listener?.onFragmentInteraction(_currentPosition)
                 }
             })
 
-        recycle_own_view.setHasFixedSize(true)
-        recycle_own_view.layoutManager = LinearLayoutManager(activity)
-        recycle_own_view.adapter = adapter
+        recycle_own_view.apply {
+            setHasFixedSize(true)
+            layoutManager = LinearLayoutManager(activity)
+            adapter = viewAdapter
+        }
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -133,7 +135,7 @@ class OwnQuestions : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        println("自分の質問一覧へ戻る")
+
         //画面描画
         setScreen()
     }
@@ -166,12 +168,13 @@ class OwnQuestions : Fragment() {
          */
         // TODO: Rename and change types and number of parameters
         @JvmStatic
-        fun newInstance(sessionId: String?, user: User) =
+        fun newInstance(sessionId: String?, user: User, position: Int) =
             OwnQuestions().apply {
                 arguments = Bundle().apply {
-                    putString(ARG_PARAM1, sessionId)
-                    putInt(ARG_PARAM2, user.status)
-                    putString(ARG_PARAM3, user.userId)
+                    putString(SingletonService.SESSION_ID, sessionId)
+                    putInt(SingletonService.STATUS, user.status)
+                    putString(SingletonService.USER_ID, user.userId)
+                    putInt(SingletonService.CURRENT_POSITION, position)
                 }
             }
     }

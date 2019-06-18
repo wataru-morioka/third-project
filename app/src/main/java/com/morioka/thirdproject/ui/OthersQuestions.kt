@@ -14,7 +14,7 @@ import com.morioka.thirdproject.model.AppDatabase
 import com.morioka.thirdproject.model.Question
 import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.common.CommonService
-import com.morioka.thirdproject.adapter.RecycleOthersQuestioinsViewAdapter
+import com.morioka.thirdproject.adapter.RecycleOthersQuestionsViewAdapter
 import com.morioka.thirdproject.common.SingletonService
 import kotlinx.android.synthetic.main.fragment_others_questions.*
 import kotlinx.coroutines.GlobalScope
@@ -24,9 +24,6 @@ import kotlinx.coroutines.runBlocking
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = SingletonService.SESSION_ID
-private const val ARG_PARAM2 = SingletonService.STATUS
-private const val ARG_PARAM3 = SingletonService.USER_ID
 
 /**
  * A simple [Fragment] subclass.
@@ -43,15 +40,16 @@ class OthersQuestions : Fragment() {
     private var _status: Int = 0
     private var _userId: String? = null
     private var _listener: OnFragmentInteractionListener? = null
-    private val _dialog = ProgressDialog()
     private var _dbContext: AppDatabase? = null
+    private var _currentPosition: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            _sessionId = it.getString(ARG_PARAM1)
-            _status = it.getInt(ARG_PARAM2)
-            _userId = it.getString(ARG_PARAM3)
+            _sessionId = it.getString(SingletonService.SESSION_ID)
+            _status = it.getInt(SingletonService.STATUS)
+            _userId = it.getString(SingletonService.USER_ID)
+            _currentPosition = it.getInt(SingletonService.CURRENT_POSITION)
         }
 
         _dbContext = CommonService().getDbContext(context!!)
@@ -89,30 +87,34 @@ class OthersQuestions : Fragment() {
             }.join()
         }
 
-        val adapter = RecycleOthersQuestioinsViewAdapter(
+        val viewAdapter = RecycleOthersQuestionsViewAdapter(
             othersQuestionList,
-            object : RecycleOthersQuestioinsViewAdapter.ListListener {
+            object : RecycleOthersQuestionsViewAdapter.ListListener {
                 override fun onClickRow(tappedView: View, question: Question) {
                     runBlocking {
                         GlobalScope.launch {
                             //確認フラグ更新
-                            val updateQuestion = _dbContext!!.questionFactory().getQuestionById(question.id)
-                            updateQuestion.confirmationFlag = true
+                            val updateQuestion = _dbContext!!.questionFactory().getQuestionById(question.id).apply {
+                                confirmationFlag = true
+                            }
                             _dbContext!!.questionFactory().update(updateQuestion)
                         }.join()
                     }
 
-                    val intent = Intent(activity, DetailOthersQuestionActivity::class.java)
-                    intent.putExtra(SingletonService.QUESTION_ID, question.id)
+                    val intent = Intent(activity, DetailOthersQuestionActivity::class.java).apply {
+                        putExtra(SingletonService.QUESTION_ID, question.id)
+                    }
                     startActivity(intent)
 
-                    _listener?.onFragmentInteraction(1)
+                    _listener?.onFragmentInteraction(_currentPosition)
                 }
             })
 
-        recycle_others_view.setHasFixedSize(true)
-        recycle_others_view.layoutManager = LinearLayoutManager(activity)
-        recycle_others_view.adapter = adapter
+        recycle_others_view.apply {
+            setHasFixedSize(true)
+            layoutManager = LinearLayoutManager(activity)
+            adapter = viewAdapter
+        }
     }
 
     override fun onAttach(context: Context) {
@@ -131,7 +133,7 @@ class OthersQuestions : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        println("他人の質問一覧へ戻る")
+
         //画面描画
         setScreen()
     }
@@ -164,12 +166,13 @@ class OthersQuestions : Fragment() {
          */
         // TODO: Rename and change types and number of parameters
         @JvmStatic
-        fun newInstance(sessionId: String?, user: User) =
+        fun newInstance(sessionId: String?, user: User, position: Int) =
             OthersQuestions().apply {
                 arguments = Bundle().apply {
-                    putString(ARG_PARAM1, sessionId)
-                    putInt(ARG_PARAM2, user.status)
-                    putString(ARG_PARAM3, user.userId)
+                    putString(SingletonService.SESSION_ID, sessionId)
+                    putInt(SingletonService.STATUS, user.status)
+                    putString(SingletonService.USER_ID, user.userId)
+                    putInt(SingletonService.CURRENT_POSITION, position)
                 }
             }
     }

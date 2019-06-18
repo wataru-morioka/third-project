@@ -11,44 +11,36 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import android.net.ConnectivityManager
+import android.os.VibrationEffect
 import android.util.Log
 import com.google.firebase.iid.FirebaseInstanceId
 import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.model.UserInfo
 import com.squareup.okhttp.ConnectionSpec
 import io.grpc.ManagedChannel
-import io.grpc.ManagedChannelBuilder
-import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
-import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.okhttp.OkHttpChannelBuilder
-import io.grpc.okhttp.internal.Platform
 import java.lang.Exception
-import io.grpc.internal.GrpcUtil
 import kotlinx.io.InputStream
 import java.io.BufferedInputStream
-import java.io.FileInputStream
 import java.security.GeneralSecurityException
 import java.security.KeyStore
-import java.security.SecureRandom
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManagerFactory
+import kotlin.collections.ArrayList
 
 
 class CommonService {
-//    val host: String = "10.0.2.2"
-//    val rabbitmqPort = "50030"
-//    val grpcPort = 50050
-//    val authenPort = 50030
-
     fun getStatusData(): ArrayList<Target> {
-        val statusList = ArrayList<Target>()
-        statusList.add(Target(0, "Bronze", 10))
-        statusList.add(Target(1, "Silver", 50))
-        statusList.add(Target(2, "Gold", 100))
-        return statusList
+        return ArrayList<Target>().apply {
+            add(Target(0, "Bronze", 10))
+            add(Target(1, "Silver", 50))
+            add(Target(2, "Gold", 100))
+        }
     }
 
     fun getDbContext(context: Context): AppDatabase {
@@ -75,8 +67,10 @@ class CommonService {
             Log.i("FIREBASE", "[CALLBACK] Token = ${task.result?.token}")
             val token = task.result?.token
             val messageIntent = Intent(SingletonService.UPDATE_TOKEN)
+
+            //トークン取得イベント周知
             messageIntent.putExtra(SingletonService.TOKEN, token)
-            SingletonService().getAppContext().sendBroadcast(messageIntent)
+            SingletonService.getAppContext().sendBroadcast(messageIntent)
         }
         return ""
     }
@@ -86,8 +80,7 @@ class CommonService {
         var sslSocketFactory: SSLSocketFactory? = null
         try {
             val cf: CertificateFactory = CertificateFactory.getInstance("X.509")
-            // From https://www.washington.edu/itconnect/security/ca/load-der.crt
-            val caInput: InputStream = BufferedInputStream(SingletonService().getAppContext().classLoader.getResourceAsStream("ca-cert.pem"))
+            val caInput: InputStream = BufferedInputStream(SingletonService.getAppContext().classLoader.getResourceAsStream("ca-cert.pem"))
 
 //            val inputAsString = caInput.bufferedReader().use { it.readText() }
 
@@ -134,22 +127,8 @@ class CommonService {
         }
 
         val userId = user?.userId
-//        val authenChannel: ManagedChannel?
-//        try {
-////            authenChannel = ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-////                .usePlaintext()
-////                .build()
-//        } catch (e: Exception) {
-//            println("サーバに接続に失敗")
-//            e.printStackTrace()
-//            return UserInfo(token, userId, null, user?.status ?: 0)
-//        }
 
-        val authenChannel = OkHttpChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
-            .sslSocketFactory(createSocketFactory())
-            .build()
-
+        val authenChannel = getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
         val agent = AuthenGrpc.newBlockingStub(authenChannel)
 
         val request = LoginRequest.newBuilder()
@@ -164,26 +143,26 @@ class CommonService {
             response = agent.login(request)
         } catch (e: Exception) {
             println("ログイン処理中サーバとの接続に失敗")
-            authenChannel?.shutdown()
-            return UserInfo(token, userId, null, user?.status ?: 0)
+            authenChannel.shutdown()
+            return UserInfo(token, userId, null, user?.status!!)
         }
 
         println("res : " + response.sessionId + response.status)
-        authenChannel?.shutdown()
+        authenChannel.shutdown()
 
         return UserInfo(token, userId, response.sessionId, response.status)
     }
 
     //メッセージングサーバの接続情報を取得
     fun getFactory(): ConnectionFactory {
-        val factory = ConnectionFactory()
-        factory.host = SingletonService.HOST
-        factory.port = SingletonService.RABBITMQ_PORT
-        factory.useSslProtocol("TLSv1.2")
-        factory.virtualHost = SingletonService.VIRTUAL_HOST
-        factory.username = SingletonService.RABBITMQ_USER
-        factory.password = SingletonService.RABBITMQ_PASSWORD
-        return factory
+        return ConnectionFactory().apply {
+            host = SingletonService.HOST
+            port = SingletonService.RABBITMQ_PORT
+            useSslProtocol("TLSv1.2")
+            virtualHost = SingletonService.VIRTUAL_HOST
+            username = SingletonService.RABBITMQ_USER
+            password = SingletonService.RABBITMQ_PASSWORD
+        }
     }
 
     fun isOnline(context: Context): Boolean {
@@ -192,5 +171,34 @@ class CommonService {
         // You should always check isConnected(), since isConnected()
         // handles cases like unstable network state.
         return networkInfo != null && networkInfo.isConnected
+    }
+
+    fun getVibEffect() : VibrationEffect? {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            return VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
+        return null
+    }
+
+    fun getNow(): String {
+        return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).format(Date())
+    }
+
+    fun changeDateFormat(target: String): String {
+        return SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).format(getDateTime(target))
+    }
+
+    fun getDateTime(target: String): Date {
+        return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(target)
+    }
+
+    fun getGRPCChannel(host: String, port: Int): ManagedChannel {
+        return OkHttpChannelBuilder.forAddress(host, port)
+            .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
+            .sslSocketFactory(createSocketFactory())
+            .build()
+////            ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+////                .usePlaintext()
+////                .build()
     }
 }

@@ -7,7 +7,6 @@ import android.content.IntentFilter
 import android.os.Bundle
 import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.app.AppCompatActivity
-import android.util.Log
 import android.view.View
 import com.morioka.thirdproject.R
 import com.morioka.thirdproject.model.AppDatabase
@@ -25,7 +24,6 @@ import kotlinx.android.synthetic.main.detail_own_question.answer2_tv
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.text.SimpleDateFormat
 import java.util.*
 
 class DetailOwnQuestionActivity: AppCompatActivity() {
@@ -36,19 +34,16 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.detail_own_question)
 
-        if (savedInstanceState != null) {
-            _questionId = savedInstanceState.getLong(SingletonService.QUESTION_ID)
-        } else {
-            _questionId = intent.getLongExtra(SingletonService.QUESTION_ID, 0)
-        }
+        _questionId = getQuestionId(savedInstanceState)
+
+        _dbContext = CommonService().getDbContext(this)
+
+        //データ更新イベントレシーバ登録
+        val messageFilter = IntentFilter(SingletonService.OWN)
+        LocalBroadcastManager.getInstance(this).registerReceiver(UpdateInfoReceiver(_questionId), messageFilter)
 
         //画面描画
         setScreen(_questionId)
-
-        val messageFilter = IntentFilter(SingletonService.OWN)
-        // Broadcast を受け取る BroadcastReceiver を設定
-        // LocalBroadcast の設定
-        LocalBroadcastManager.getInstance(this).registerReceiver(UpdateInfoReceiver(_questionId), messageFilter)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -56,14 +51,18 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         outState.putLong(SingletonService.QUESTION_ID, _questionId)
     }
 
+    private fun getQuestionId(savedInstanceState: Bundle?): Long {
+        return when (savedInstanceState) {
+            null -> intent.getLongExtra(SingletonService.QUESTION_ID, 0)
+            else -> savedInstanceState.getLong(SingletonService.QUESTION_ID)
+        }
+    }
+
     //画面描画
     private fun setScreen(questionId: Long){
-        _dbContext = CommonService().getDbContext(this)
-        var user: User? = null
         var question: Question? = null
         runBlocking {
             GlobalScope.launch {
-                user = _dbContext!!.userFactory().getMyInfo()
                 question = _dbContext!!.questionFactory().getQuestionById(questionId)
             }.join()
         }
@@ -73,9 +72,7 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         answer2_tv.text = question?.answer2
 
         //質問送信時間セット
-        val sendDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.JAPAN).parse(question?.createdDateTime)
-        val sendDate = SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).format(sendDateTime)
-        send_date_tv.text = sendDate
+        send_date_tv.text = CommonService().changeDateFormat(question?.createdDateTime!!)
 
         target_number_tv.text = getString(R.string.target_number, question!!.targetNumber)
         time_period_tv.text = getString(R.string.time_period, question!!.timePeriod)
@@ -83,11 +80,11 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         //集計結果受信前
         if (question?.determinationFlag == false) {
             // Date型の日時をCalendar型に変換
-            val calendar = Calendar.getInstance()
-            calendar.time = sendDateTime
-
-            // 日時を加算する
-            calendar.add(Calendar.MINUTE, question?.timePeriod ?: 0)
+            val calendar = Calendar.getInstance().apply {
+                time = CommonService().getDateTime(question?.createdDateTime!!)
+                // 日時を加算する
+                add(Calendar.MINUTE, question?.timePeriod ?: 0)
+            }
 
             // Calendar型の日時をDate型に戻す
             val timeLimit = calendar.time
@@ -126,10 +123,8 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
     //データ更新通知を検知
     inner class UpdateInfoReceiver(private val questionId: Long)  : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            Log.d("DataReceiver", "onReceive")
+            println("自分の質問データ更新イベント検知")
 
-//            // Broadcast されたメッセージを取り出す
-//            val message = intent.getStringExtra("Message")
             // 画面再描画
             setScreen(questionId)
         }
