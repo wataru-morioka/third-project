@@ -18,7 +18,9 @@ import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.model.UserInfo
 import com.squareup.okhttp.ConnectionSpec
 import io.grpc.ManagedChannel
+import io.grpc.ManagedChannelBuilder
 import io.grpc.okhttp.OkHttpChannelBuilder
+import kotlinx.coroutines.async
 import java.lang.Exception
 import kotlinx.io.InputStream
 import java.io.BufferedInputStream
@@ -119,21 +121,20 @@ class CommonService {
 
         val token = getToken()
 
-        var user: User? = null
-        runBlocking {
-            GlobalScope.launch {
-                user = _dbContext.userFactory().getMyInfo()
-            }.join()
+        val user = runBlocking {
+            GlobalScope.async {
+                _dbContext.userFactory().getMyInfo()
+            }.await()
         }
 
-        val userId = user?.userId
+        val userId = user.userId
 
         val authenChannel = getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
         val agent = AuthenGrpc.newBlockingStub(authenChannel)
 
         val request = LoginRequest.newBuilder()
-            .setUserId(user?.userId)
-            .setPassword(user?.password)
+            .setUserId(user.userId)
+            .setPassword(user.password)
             .setToken(token ?: "")
             .build()
 
@@ -144,7 +145,7 @@ class CommonService {
         } catch (e: Exception) {
             println("ログイン処理中サーバとの接続に失敗")
             authenChannel.shutdown()
-            return UserInfo(token, userId, null, user?.status!!)
+            return UserInfo(token, userId, null, user.status)
         }
 
         println("res : " + response.sessionId + response.status)
@@ -197,8 +198,8 @@ class CommonService {
             .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
             .sslSocketFactory(createSocketFactory())
             .build()
-////            ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-////                .usePlaintext()
-////                .build()
+//        return ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+//                .usePlaintext()
+//                .build()
     }
 }

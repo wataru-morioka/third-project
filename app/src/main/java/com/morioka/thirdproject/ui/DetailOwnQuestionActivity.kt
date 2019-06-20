@@ -22,6 +22,7 @@ import kotlinx.android.synthetic.main.detail_own_question.answer2_number_tv
 import kotlinx.android.synthetic.main.detail_own_question.answer2_percentage_tv
 import kotlinx.android.synthetic.main.detail_own_question.answer2_tv
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.*
@@ -60,30 +61,29 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
 
     //画面描画
     private fun setScreen(questionId: Long){
-        var question: Question? = null
-        runBlocking {
-            GlobalScope.launch {
-                question = _dbContext!!.questionFactory().getQuestionById(questionId)
-            }.join()
+        val question = runBlocking {
+            GlobalScope.async {
+                _dbContext!!.questionFactory().getQuestionById(questionId)
+            }.await()
         }
 
-        own_question_tv.text = question?.question
-        answer1_tv.text = question?.answer1
-        answer2_tv.text = question?.answer2
+        own_question_tv.text = question.question
+        answer1_tv.text = question.answer1
+        answer2_tv.text = question.answer2
 
         //質問送信時間セット
-        send_date_tv.text = CommonService().changeDateFormat(question?.createdDateTime!!)
+        send_date_tv.text = CommonService().changeDateFormat(question.createdDateTime)
 
         target_number_tv.text = getString(R.string.target_number, question!!.targetNumber)
         time_period_tv.text = getString(R.string.time_period, question!!.timePeriod)
 
         //集計結果受信前
-        if (question?.determinationFlag == false) {
+        if (!question.determinationFlag) {
             // Date型の日時をCalendar型に変換
             val calendar = Calendar.getInstance().apply {
-                time = CommonService().getDateTime(question?.createdDateTime!!)
+                time = CommonService().getDateTime(question.createdDateTime)
                 // 日時を加算する
-                add(Calendar.MINUTE, question?.timePeriod ?: 0)
+                add(Calendar.MINUTE, question.timePeriod)
             }
 
             // Calendar型の日時をDate型に戻す
@@ -105,13 +105,13 @@ class DetailOwnQuestionActivity: AppCompatActivity() {
         answer1_number_tv.text = getString(R.string.answer_number, question!!.answer1number)
         answer2_number_tv.text= getString(R.string.answer_number, question!!.answer2number)
 
-        when ((question?.answer1number ?: 0) + (question?.answer2number ?: 0)) {
+        when (question.answer1number + question.answer2number) {
             0 -> {
                 answer1_percentage_tv.text = "0%"
                 answer2_percentage_tv.text = "0%"
             }
             else -> {
-                val answer1percentage = (question?.answer1number ?: 0) * 100 / ((question?.answer1number ?: 0) + (question?.answer2number ?: 0))
+                val answer1percentage = question.answer1number * 100 / (question.answer1number + question.answer2number)
                 val answer2percentage = 100 - answer1percentage
 
                 answer1_percentage_tv.text = getString(R.string.answer_percentage, answer1percentage)

@@ -26,6 +26,7 @@ import io.grpc.okhttp.OkHttpChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.android.synthetic.main.fragment_member_status.*
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import socket.SocketGrpc
@@ -88,10 +89,10 @@ class MemberStatus : Fragment() {
 
         userId_tv.text = _userId
 
-        runBlocking{
-            GlobalScope.launch {
-                _status = _dbContext!!.userFactory().getMyInfo().status
-            }.join()
+        _status = runBlocking{
+            GlobalScope.async {
+               _dbContext!!.userFactory().getMyInfo().status
+            }.await()
         }
 
         val statusList = CommonService().getStatusData()
@@ -133,11 +134,11 @@ class MemberStatus : Fragment() {
             // ダイアログを作成して表示
             AlertDialog.Builder(context).apply {
                 setMessage("本当に更新しますか？")
-                setPositiveButton("oK", DialogInterface.OnClickListener { alertDialog, _ ->
-                    alertDialog.dismiss()
+                setPositiveButton("oK") { it, _ ->
+                    it.dismiss()
                     //更新処理
                     updateStatus(_sessionId, updatedItem.status)
-                })
+                }
                 setNegativeButton("cancel", null)
                 show()
             }
@@ -148,47 +149,45 @@ class MemberStatus : Fragment() {
     private fun updateStatus(sessionId: String?, status: Int) {
         _dialog.show(fragmentManager, "progress")
 
-        val socketChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.GRPC_PORT)
-        val agent = SocketGrpc.newBlockingStub(socketChannel)
+        GlobalScope.launch {
+            val socketChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.GRPC_PORT)
+            val agent = SocketGrpc.newBlockingStub(socketChannel)
 
-        val request = UpdateRequest.newBuilder()
-            .setSessionId(sessionId ?: "")
-            .setStatus(status)
-            .build()
+            val request = UpdateRequest.newBuilder()
+                .setSessionId(sessionId ?: "")
+                .setStatus(status)
+                .build()
 
-        val response: StatusResult
-        try {
-            response = agent.updateStatus(request)
-        } catch (e: Exception) {
+            val response: StatusResult
+            try {
+                response = agent.updateStatus(request)
+            } catch (e: Exception) {
+                _dialog.dismiss()
+                displayMessage("サーバに接続できません")
+                socketChannel.shutdown()
+                return@launch
+            }
+
+            if (!response.result) {
+                _dialog.dismiss()
+                displayMessage("更新に失敗しました")
+                socketChannel.shutdown()
+                return@launch
+            }
+
+            //DB更新
+            val user = _dbContext!!.userFactory().getMyInfo()
+            user.status = status
+            _dbContext!!.userFactory().update(user)
+
+            _listener?.onFragmentInteraction(_currentPosition - 1)
+            _listener?.onFragmentInteraction(_currentPosition)
+
             _dialog.dismiss()
-            displayMessage("サーバに接続できません")
+
+            displayMessage("更新が完了しました")
             socketChannel.shutdown()
-            return
         }
-
-        if (!response.result) {
-            _dialog.dismiss()
-            displayMessage("更新に失敗しました")
-            socketChannel.shutdown()
-            return
-        }
-
-        runBlocking {
-            GlobalScope.launch {
-                //DB更新
-                val user = _dbContext!!.userFactory().getMyInfo()
-                user.status = status
-                _dbContext!!.userFactory().update(user)
-            }.join()
-        }
-
-        _listener?.onFragmentInteraction(_currentPosition - 1)
-        _listener?.onFragmentInteraction(_currentPosition)
-
-        _dialog.dismiss()
-
-        displayMessage("更新が完了しました")
-        socketChannel.shutdown()
     }
 
     private fun displayMessage(message: String?) {

@@ -15,6 +15,7 @@ import io.grpc.ManagedChannelBuilder
 import io.grpc.okhttp.OkHttpChannelBuilder
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.lang.Exception
@@ -47,20 +48,15 @@ class ReceiverService {
             // Broadcast されたメッセージを取り出す
             val token = intent.getStringExtra(SingletonService.TOKEN)
 
-            var user: User? = null
-            runBlocking {
-                GlobalScope.launch {
-                    user = dbContext.userFactory().getMyInfo()
-                }.join()
-            }
-
-            if (user == null) {
-                return
+            val user = runBlocking {
+                GlobalScope.async {
+                    dbContext.userFactory().getMyInfo()
+                }.await()
             }
 
             val request = LoginRequest.newBuilder()
-                .setUserId(user?.userId)
-                .setPassword(user?.password)
+                .setUserId(user.userId)
+                .setPassword(user.password)
                 .setToken(token)
                 .build()
 

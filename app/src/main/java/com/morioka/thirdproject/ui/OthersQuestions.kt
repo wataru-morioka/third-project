@@ -18,6 +18,7 @@ import com.morioka.thirdproject.adapter.RecycleOthersQuestionsViewAdapter
 import com.morioka.thirdproject.common.SingletonService
 import kotlinx.android.synthetic.main.fragment_others_questions.*
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -79,12 +80,10 @@ class OthersQuestions : Fragment() {
 
     //画面描画
     private fun setScreen(){
-        var othersQuestionList = listOf<Question>()
-
-        runBlocking {
-            GlobalScope.launch {
-                othersQuestionList = _dbContext!!.questionFactory().getOthersQuestions(SingletonService.OTHERS)
-            }.join()
+        val othersQuestionList = runBlocking {
+            GlobalScope.async {
+                _dbContext!!.questionFactory().getOthersQuestions(SingletonService.OTHERS)
+            }.await()
         }
 
         val viewAdapter = RecycleOthersQuestionsViewAdapter(

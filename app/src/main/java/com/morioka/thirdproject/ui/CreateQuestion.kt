@@ -26,6 +26,7 @@ import com.morioka.thirdproject.model.Target
 import com.rabbitmq.client.Channel
 import com.rabbitmq.client.Connection
 import com.rabbitmq.client.ConnectionFactory
+import kotlinx.coroutines.async
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -87,10 +88,10 @@ class CreateQuestion : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        runBlocking {
-            GlobalScope.launch {
-                _status = _dbContext!!.userFactory().getMyInfo().status
-            }.join()
+        _status = runBlocking {
+            GlobalScope.async {
+                _dbContext!!.userFactory().getMyInfo().status
+            }.await()
         }
 
         val targetList = CommonService().getStatusData().filter{ x -> x.status <= _status} as ArrayList<Target>
@@ -139,8 +140,6 @@ class CreateQuestion : Fragment() {
                 return@setOnClickListener
             }
 
-            _dialog.show(fragmentManager , "progress")
-
             //質問をキューサーバに送信
             askMyQuestionin()
         }
@@ -148,91 +147,91 @@ class CreateQuestion : Fragment() {
 
     //質問をキューサーバに送信
     private fun askMyQuestionin(){
+        _dialog.show(fragmentManager , "progress")
+
         val selectedTarget = target_spinner.selectedItem as Target
 
-        runBlocking {
-            GlobalScope.launch {
-                _dbContext!!.run {
-                    //トランザクション開始
-                    beginTransaction()
+        GlobalScope.launch {
+            _dbContext!!.run {
+                //トランザクション開始
+                beginTransaction()
 
-                    //DBに登録し、その際のquestionIdを取得
-                    val questionId = registerQuestion(selectedTarget.targetNumber)
+                //DBに登録し、その際のquestionIdを取得
+                val questionId = registerQuestion(selectedTarget.targetNumber)
 
-                    val connection: Connection?
-                    val channel: Channel?
+                val connection: Connection?
+                val channel: Channel?
 
-                    try {
-                        val factory = CommonService().getFactory()
-                        connection = factory.newConnection()
-                        channel = connection.createChannel()
-                        channel.queueDeclare(SingletonService.QUESTION, true, false, false, null)
-                    } catch (e: Exception) {
-                        println("エラー：キューサーバとの接続に失敗")
-                        endTransaction()
-                        _dialog.dismiss()
-                        activity?.runOnUiThread{
-                            Toast.makeText(context!!, "サーバに接続できません", Toast.LENGTH_SHORT).show()
-                        }
-                        return@launch
+                try {
+                    val factory = CommonService().getFactory()
+                    connection = factory.newConnection()
+                    channel = connection.createChannel()
+                    channel.queueDeclare(SingletonService.QUESTION, true, false, false, null)
+                } catch (e: Exception) {
+                    println("エラー：キューサーバとの接続に失敗")
+                    endTransaction()
+                    _dialog.dismiss()
+                    activity?.runOnUiThread{
+                        Toast.makeText(context!!, "サーバに接続できません", Toast.LENGTH_SHORT).show()
                     }
-
-                    //メッセージ作成
-                    val questionRequest = QuestionRequest(
-                        _userId ?: "",
-                        questionId,
-                        question_tv.text.toString(),
-                        answer1_tv.text.toString(),
-                        answer2_tv.text.toString(),
-                        selectedTarget.targetNumber,
-                        SingletonService.TIME_PERIOD
-                    )
-
-                    //クラスオベジェクトをJSON文字列にデシリアライズ
-                    val message = Gson().toJson(questionRequest)
-
-                    try {
-                        channel.run {
-                            channel.txSelect()
-                            channel.basicPublish("", SingletonService.QUESTION, null, message.toByteArray(charset("UTF-8")))
-                            channel.txCommit()
-                        }
-
-                        println("メッセージ送信に成功しました")
-                        println(" [x] Sent '$message'")
-                        _listener?.onFragmentInteraction(_currentPosition)
-
-                        //コミット
-                        setTransactionSuccessful()
-
-                        //画面をクリア
-                        activity?.runOnUiThread{
-                            //TODO リセット処理
-                            question_tv.setText("")
-                            answer1_tv.setText("")
-                            answer2_tv.setText("")
-                            Toast.makeText(activity, "送信が完了しました", Toast.LENGTH_SHORT).show()
-                        }
-                    } catch (e: Exception) {
-                        println("メッセージ送信に失敗しました")
-
-                        channel.txRollback()
-
-                        val deleteQuestion = questionFactory().getQuestionById(questionId)
-                        questionFactory().delete(deleteQuestion)
-
-                        //画面をクリア
-                        activity?.runOnUiThread{
-                            Toast.makeText(activity, "メッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
-                        }
-                    } finally {
-                        endTransaction()
-                        channel.close()
-                        connection.close()
-                        _dialog.dismiss()
-                    }
+                    return@launch
                 }
-            }.join()
+
+                //メッセージ作成
+                val questionRequest = QuestionRequest(
+                    _userId ?: "",
+                    questionId,
+                    question_tv.text.toString(),
+                    answer1_tv.text.toString(),
+                    answer2_tv.text.toString(),
+                    selectedTarget.targetNumber,
+                    SingletonService.TIME_PERIOD
+                )
+
+                //クラスオベジェクトをJSON文字列にデシリアライズ
+                val message = Gson().toJson(questionRequest)
+
+                try {
+                    channel.run {
+                        channel.txSelect()
+                        channel.basicPublish("", SingletonService.QUESTION, null, message.toByteArray(charset("UTF-8")))
+                        channel.txCommit()
+                    }
+
+                    println("メッセージ送信に成功しました")
+                    println(" [x] Sent '$message'")
+                    _listener?.onFragmentInteraction(_currentPosition)
+
+                    //コミット
+                    setTransactionSuccessful()
+
+                    //画面をクリア
+                    activity?.runOnUiThread{
+                        //TODO リセット処理
+                        question_tv.setText("")
+                        answer1_tv.setText("")
+                        answer2_tv.setText("")
+                        Toast.makeText(activity, "送信が完了しました", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    println("メッセージ送信に失敗しました")
+
+                    channel.txRollback()
+
+                    val deleteQuestion = questionFactory().getQuestionById(questionId)
+                    questionFactory().delete(deleteQuestion)
+
+                    //画面をクリア
+                    activity?.runOnUiThread{
+                        Toast.makeText(activity, "メッセージ送信に失敗しました", Toast.LENGTH_SHORT).show()
+                    }
+                } finally {
+                    endTransaction()
+                    channel.close()
+                    connection.close()
+                    _dialog.dismiss()
+                }
+            }
         }
     }
 

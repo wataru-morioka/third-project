@@ -24,6 +24,7 @@ import android.os.Vibrator
 import com.morioka.thirdproject.model.UserInfo
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLoggerFactory
 import io.grpc.netty.shaded.io.netty.util.internal.logging.JdkLoggerFactory
+import kotlinx.coroutines.async
 import java.lang.Exception
 
 class RegisterUserActivity : AppCompatActivity() {
@@ -87,11 +88,11 @@ class RegisterUserActivity : AppCompatActivity() {
                 // ダイアログを作成して表示
                 AlertDialog.Builder(this@RegisterUserActivity).apply {
                     setMessage("『${userId}』を本当に登録しますか？")
-                    setPositiveButton("oK", DialogInterface.OnClickListener { alertDialog, _ ->
-                        alertDialog.dismiss()
+                    setPositiveButton("oK") { it, _ ->
+                        it.dismiss()
                         //登録リクエスト非同期通信
                         registerUser()
-                    })
+                    }
                     setNegativeButton("cancel", null)
                     show()
                 }
@@ -158,61 +159,66 @@ class RegisterUserActivity : AppCompatActivity() {
         println("ユーザ登録処理開始")
         _dialog.show(supportFragmentManager, "progress")
 
-        var token = CommonService().getToken()
-        if (token.isNullOrEmpty()) {
-            token = _token
-            if(token.isNullOrEmpty()){
-                token = ""
+        GlobalScope.launch {
+            var token = CommonService().getToken()
+            if (token.isNullOrEmpty()) {
+                token = _token
+                if(token.isNullOrEmpty()){
+                    token = ""
+                }
             }
-        }
 
-        val authenChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-        val agent = AuthenGrpc.newBlockingStub(authenChannel)
+            val authenChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+            val agent = AuthenGrpc.newBlockingStub(authenChannel)
 
-        _userId = registration_id.text.toString()
-        val request = RegistrationRequest.newBuilder()
-            .setUserId(_userId)
-            .setToken(token)
-            .build()
+            _userId = registration_id.text.toString()
+            val request = RegistrationRequest.newBuilder()
+                .setUserId(_userId)
+                .setToken(token)
+                .build()
 
-        val response: RegistrationResult
-        try{
-            response = agent.register(request)
-            _sessionId = response.sessionId
-        } catch (e: Exception){
+            val response: RegistrationResult
+            try{
+                response = agent.register(request)
+                _sessionId = response.sessionId
+            } catch (e: Exception){
+                _dialog.dismiss()
+                displayMessage("サーバに接続できません")
+                authenChannel.shutdown()
+                return@launch
+            }
+
+            if (!response.result){
+                _dialog.dismiss()
+                displayMessage("そのIDはすでに登録されています")
+                authenChannel.shutdown()
+                return@launch
+            }
+
+            //ユーザ情報を登録
+            val user = User().apply {
+                userId = _userId!!
+                password = response.password
+                createdDateTime = CommonService().getNow()
+            }
+
+            _dbContext!!.userFactory().insert(user)
+
             _dialog.dismiss()
-            Toast.makeText(this@RegisterUserActivity, "サーバに接続できません", Toast.LENGTH_SHORT).show()
+
+            displayMessage("登録が完了しました")
+
             authenChannel.shutdown()
-            return
+
+            //メイン画面へ遷移
+            moveToMainActivity(UserInfo(token, _userId, _sessionId, 0))
         }
+    }
 
-        if (!response.result){
-            _dialog.dismiss()
-            Toast.makeText(this@RegisterUserActivity, "そのIDはすでに登録されています", Toast.LENGTH_SHORT).show()
-            authenChannel.shutdown()
-            return
+    private fun displayMessage(message: String) {
+        runOnUiThread {
+            Toast.makeText(this@RegisterUserActivity, message, Toast.LENGTH_SHORT).show()
         }
-
-        //ユーザ情報を登録
-        val user = User().apply {
-            userId = _userId!!
-            password = response.password
-            createdDateTime = CommonService().getNow()
-        }
-        runBlocking {
-            GlobalScope.launch {
-                _dbContext!!.userFactory().insert(user)
-            }.join()
-        }
-
-        _dialog.dismiss()
-
-        Toast.makeText(this@RegisterUserActivity, "登録が完了しました", Toast.LENGTH_SHORT).show()
-
-        authenChannel.shutdown()
-
-        //メイン画面へ遷移
-        moveToMainActivity(UserInfo(token, _userId, _sessionId, 0))
     }
 
     //トークンが更新されたことを検知
