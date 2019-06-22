@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         }
 
         //ログイン
-        val userInfo = CommonService().login(_dbContext!!)
+        val userInfo = CommonService(this@MainActivity).login(_dbContext!!)
 
         if (_socketChannel == null && userInfo.sessionId.isNullOrEmpty()) {
             return

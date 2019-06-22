@@ -51,7 +51,7 @@ class RegisterUserActivity : AppCompatActivity() {
             }
 
             //ユーザ登録済みだった場合、サーバにセッションをもらいメイン画面へ遷移
-            val userInfo = CommonService().login(_dbContext!!)
+            val userInfo = CommonService(this@RegisterUserActivity).login(_dbContext!!)
 
             _sessionId = userInfo.sessionId
             _status = userInfo.status
@@ -190,8 +190,13 @@ class RegisterUserActivity : AppCompatActivity() {
 
             if (!response.result){
                 _dialog.dismiss()
-                displayMessage("そのIDはすでに登録されています")
                 authenChannel.shutdown()
+
+                if (response.sessionId == "err") {
+                    displayMessage("サーバエラーです")
+                    return@launch
+                }
+                displayMessage("そのIDはすでに登録されています")
                 return@launch
             }
 

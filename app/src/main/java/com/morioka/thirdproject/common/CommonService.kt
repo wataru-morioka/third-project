@@ -1,5 +1,6 @@
 package com.morioka.thirdproject.common
 
+import android.app.Activity
 import android.arch.persistence.room.Room
 import android.content.Context
 import android.content.Intent
@@ -13,9 +14,11 @@ import kotlinx.coroutines.runBlocking
 import android.net.ConnectivityManager
 import android.os.VibrationEffect
 import android.util.Log
+import android.widget.Toast
 import com.google.firebase.iid.FirebaseInstanceId
 import com.morioka.thirdproject.model.User
 import com.morioka.thirdproject.model.UserInfo
+import com.morioka.thirdproject.ui.MainActivity
 import com.squareup.okhttp.ConnectionSpec
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
@@ -37,6 +40,16 @@ import kotlin.collections.ArrayList
 
 
 class CommonService {
+    private var mActivity: Activity? = null
+
+    constructor(){
+        return
+    }
+    constructor(activity: Activity) {
+        mActivity = activity
+
+    }
+
     fun getStatusData(): ArrayList<Target> {
         return ArrayList<Target>().apply {
             add(Target(0, "Bronze", 10))
@@ -144,12 +157,20 @@ class CommonService {
             response = agent.login(request)
         } catch (e: Exception) {
             println("ログイン処理中サーバとの接続に失敗")
+            return UserInfo(token, userId, null, user.status)
+        } finally {
             authenChannel.shutdown()
+        }
+
+        if (!response.result) {
+            println("ログイン処理中サーバ内部エラー")
+            mActivity?.runOnUiThread{
+                Toast.makeText(mActivity, "ログイン処理中サーバ内部エラー", Toast.LENGTH_SHORT).show()
+            }
             return UserInfo(token, userId, null, user.status)
         }
 
         println("res : " + response.sessionId + response.status)
-        authenChannel.shutdown()
 
         return UserInfo(token, userId, response.sessionId, response.status)
     }
