@@ -33,6 +33,7 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManagerFactory
@@ -218,6 +219,10 @@ class CommonService {
         return OkHttpChannelBuilder.forAddress(host, port)
             .connectionSpec(ConnectionSpec.COMPATIBLE_TLS)
             .sslSocketFactory(createSocketFactory())
+            .enableRetry()
+            .keepAliveWithoutCalls(true)
+            .keepAliveTime(100, TimeUnit.SECONDS)
+            .keepAliveTimeout(150, TimeUnit.SECONDS)
             .build()
 //        return ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
 //                .usePlaintext()
