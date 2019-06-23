@@ -198,7 +198,6 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
                 println("res : " + reply.result)
                 result = reply.result
                 if (!result) {
-                    //TODO
                     return
                 }
 
@@ -217,7 +216,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
                         registerOthersQuestion(reply, agent)
                     }
                     else -> {
-                        displayMessage("サーバの処理に失敗しました¥nアプリを再起動してください")
+                        displayMessage("サーバの処理に失敗しました\nアプリを再起動してください")
                     }
                 }
             }
@@ -232,7 +231,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             override fun onCompleted() {
                 println("サーバからレスポンスを受信")
                 if (!result) {
-                    displayMessage("サーバの処理に失敗しました¥nアプリを再起動してください")
+                    displayMessage("サーバの処理に失敗しました\nアプリを再起動してください")
                 }
             }
         })
@@ -422,7 +421,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             override fun onCompleted() {
                 if (!result) {
-                    displayMessage("サーバの処理に失敗しました¥nアプリを再起動してください")
+                    displayMessage("サーバの処理に失敗しました\nアプリを再起動してください")
                 }
             }
         })
