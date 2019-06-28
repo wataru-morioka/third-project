@@ -10,14 +10,14 @@ class SingletonService : Application() {
     }
 
     companion object {
-        const val HOST = "192.168.0.100"
+        const val HOST = "10.0.2.2"
         const val VIRTUAL_HOST = "/third-project"
         const val RABBITMQ_USER  = "rabbitmq"
         const val RABBITMQ_PASSWORD  = "rabbitmq"
         const val SQLITE_DATABASE_NAME = "thirdProject3"
-        const val GRPC_PORT = 50050
-        const val AUTHEN_PORT = 50030
-        const val RABBITMQ_PORT = 5671
+        const val GRPC_PORT = 31100
+        const val AUTHEN_PORT = 31000
+        const val RABBITMQ_PORT = 31200
         const val UPDATE_TOKEN = "update_token"
         const val OWN = "own"
         const val OTHERS = "others"
