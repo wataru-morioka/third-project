@@ -50,17 +50,6 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         Security.insertProviderAt(Conscrypt.newProvider(), 1)
         InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE)
 
-        _dbContext = CommonService().getDbContext(this)
-        val token = CommonService().getToken()
-
-        //トークン更新監視レシーバー登録
-        val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
-        registerReceiver(UpdateTokenReceiver(_dbContext!!), messageFilter)
-
-        //ネットワーク監視レシーバー登録
-        val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
-        registerReceiver(ConnectionReceiver(this), filter)
-
         //ユーザ情報取得
         if (savedInstanceState != null) {
             println("MainActivityが復元")
@@ -81,6 +70,17 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             _status = intent.getIntExtra(SingletonService.STATUS,  0)
             _userId = intent.getStringExtra(SingletonService.USER_ID)
         }
+
+        _dbContext = CommonService().getDbContext(this)
+        val token = CommonService().getToken()
+
+        //トークン更新監視レシーバー登録
+        val messageFilter = IntentFilter(SingletonService.UPDATE_TOKEN)
+        registerReceiver(UpdateTokenReceiver(_dbContext!!), messageFilter)
+
+        //ネットワーク監視レシーバー登録
+        val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
+        registerReceiver(ConnectionReceiver(this), filter)
 
         var user = User()
 
@@ -222,10 +222,12 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             }
 
             override fun onError(t: Throwable?) {
-                //TODO
                 println("サーバとの接続が切れた、もしくはサーバ側に障害が発生、もしくはクライアントのデータ処理に失敗")
                 println(t)
                 _socketChannel?.shutdown()
+
+                //TODO セッション再生成
+//                createSession()
             }
 
             override fun onCompleted() {

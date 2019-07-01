@@ -46,9 +46,9 @@ class CommonService {
     constructor(){
         return
     }
+
     constructor(activity: Activity) {
         mActivity = activity
-
     }
 
     fun getStatusData(): ArrayList<Target> {
@@ -93,7 +93,7 @@ class CommonService {
 
     //SSLSocketFactory生成
     fun createSocketFactory(): SSLSocketFactory? {
-        var sslSocketFactory: SSLSocketFactory? = null
+        val sslSocketFactory: SSLSocketFactory?
         try {
             val cf: CertificateFactory = CertificateFactory.getInstance("X.509")
             val caInput: InputStream = BufferedInputStream(SingletonService.getAppContext().classLoader.getResourceAsStream("ca-cert.pem"))

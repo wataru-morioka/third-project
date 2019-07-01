@@ -37,19 +37,75 @@ class RegisterUserActivity : AppCompatActivity() {
     private var _vibrationEffect: VibrationEffect? = null
     private var _userId: String? = null
 
-    //初期画面条件分岐
-    inner class CheckMyInfoAsyncTask : AsyncTask<Void, Int, Boolean>() {
-        override fun onPreExecute() {
-        }
+//    //初期画面条件分岐
+//    inner class CheckMyInfoAsyncTask : AsyncTask<Void, Int, Boolean>() {
+//        override fun onPreExecute() {
+//        }
+//
+//        override fun doInBackground(vararg param: Void?): Boolean {
+//            val count = _dbContext!!.userFactory().getCount()
+//
+//            //新規ユーザだった場合、登録画面表示
+//            if (count == 0) {
+//                return false
+//            }
+//
+//            //ユーザ登録済みだった場合、サーバにセッションをもらいメイン画面へ遷移
+//            val userInfo = CommonService(this@RegisterUserActivity).login(_dbContext!!)
+//
+//            _sessionId = userInfo.sessionId
+//            _status = userInfo.status
+//            _userId = userInfo.userId
+//
+//            //メイン画面へ遷移
+//            moveToMainActivity(userInfo)
+//            return true
+//        }
+//        override fun onProgressUpdate(vararg values: Int?) {
+//        }
+//
+//        override fun onPostExecute(result: Boolean) {
+//            if (result){
+//                return
+//            }
+//
+//            //ユーザ登録画面表示
+//            setContentView(R.layout.register_user)
+//
+//            register_bt.setOnClickListener {
+//                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+//                    _vib?.vibrate(_vibrationEffect)
+//                } else {
+//                    _vib?.vibrate(100)
+//                }
+//
+//                val userId = registration_id.text.toString()
+//                if (userId.isEmpty()){
+//                    Toast.makeText(this@RegisterUserActivity, "IDを入力してください", Toast.LENGTH_SHORT).show()
+//                    return@setOnClickListener
+//                }
+//
+//                // ダイアログを作成して表示
+//                AlertDialog.Builder(this@RegisterUserActivity).apply {
+//                    setMessage("『${userId}』を本当に登録しますか？")
+//                    setPositiveButton("oK") { it, _ ->
+//                        it.dismiss()
+//                        //登録リクエスト非同期通信
+//                        registerUser()
+//                    }
+//                    setNegativeButton("cancel", null)
+//                    show()
+//                }
+//            }
+//        }
+//    }
 
-        override fun doInBackground(vararg param: Void?): Boolean {
-            val count = _dbContext!!.userFactory().getCount()
+    //ユーザ登録済みかどうか確認
+    private fun checkMyInfo() {
+        val count = _dbContext!!.userFactory().getCount()
 
-            //新規ユーザだった場合、登録画面表示
-            if (count == 0) {
-                return false
-            }
-
+        //すでに登録されている場合、メイン画面へ遷移
+        if (count != 0) {
             //ユーザ登録済みだった場合、サーバにセッションをもらいメイン画面へ遷移
             val userInfo = CommonService(this@RegisterUserActivity).login(_dbContext!!)
 
@@ -59,16 +115,10 @@ class RegisterUserActivity : AppCompatActivity() {
 
             //メイン画面へ遷移
             moveToMainActivity(userInfo)
-            return true
-        }
-        override fun onProgressUpdate(vararg values: Int?) {
+            return
         }
 
-        override fun onPostExecute(result: Boolean) {
-            if (result){
-                return
-            }
-
+        runOnUiThread {
             //ユーザ登録画面表示
             setContentView(R.layout.register_user)
 
@@ -125,8 +175,11 @@ class RegisterUserActivity : AppCompatActivity() {
 
         _dbContext = CommonService().getDbContext(this)
 
-        //ユーザ登録済みかどうか確認
-        CheckMyInfoAsyncTask().execute()
+        GlobalScope.launch {
+            //ユーザ登録済みかどうか確認
+            checkMyInfo()
+        }
+//        CheckMyInfoAsyncTask().execute()
     }
 
     override fun onRestart() {
