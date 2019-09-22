@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
         println("オンライン")
         //ネットワークに接続した時の処理
         if (!_sessionId.isNullOrEmpty()) {
-            println("セッションが残っている")
+            println("セッションが存在している")
             return
         }
 
@@ -191,6 +191,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
             .setSessionId(_sessionId)
             .build()
 
+        println("セッションID: " + _sessionId)
+
         var result = false
 
         agent.getNewInfo(request, object : StreamObserver<InfoResult> {
@@ -255,8 +257,8 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
 
             println("セッション維持処理")
 
-            val authenServer = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
-            val agent = AuthenGrpc.newStub(authenServer)
+            val authenChannel = CommonService().getGRPCChannel(SingletonService.HOST, SingletonService.AUTHEN_PORT)
+            val agent = AuthenGrpc.newStub(authenChannel)
 
             val request = MaintenanceRequest.newBuilder()
                 .setSessionId(_sessionId)
@@ -277,14 +279,14 @@ class MainActivity : AppCompatActivity(), ViewPager.OnPageChangeListener, Create
                 override fun onError(t: Throwable?) {
                     //TODO
                     println("セッション維持に失敗しました")
-                    authenServer.shutdown()
+                    authenChannel.shutdown()
                 }
 
                 override fun onCompleted() {
                     if (!result) {
                         displayMessage("セッション維持に失敗しました")
                     }
-                    authenServer.shutdown()
+                    authenChannel.shutdown()
                 }
             })
             Thread.sleep(30000)
