@@ -29,5 +29,6 @@
 - サーバ側DBとネイティブDBの同期  
 - ネイティブDB（Room Database）  
 - ORマッパー  
+- google analytics機能  
 
 
