@@ -221,7 +221,7 @@ class CommonService {
             .sslSocketFactory(createSocketFactory())
             .enableRetry()
             .keepAliveWithoutCalls(true)
-            .keepAliveTime(60, TimeUnit.SECONDS)
+            .keepAliveTime(120, TimeUnit.SECONDS)
 //            .keepAliveTimeout(150, TimeUnit.SECONDS)
             .build()
 //        return ManagedChannelBuilder.forAddress(SingletonService.HOST, SingletonService.AUTHEN_PORT)
