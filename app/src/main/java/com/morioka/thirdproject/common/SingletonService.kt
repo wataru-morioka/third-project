@@ -29,10 +29,10 @@ class SingletonService : Application() {
         const val STATUS = "STATUS"
         const val USER_ID = "USER_ID"
         const val QUESTION_ID = "QUESTION_ID"
-        const val TIME_PERIOD = 3
+        const val TIME_PERIOD = 1
         const val CURRENT_POSITION = "CURRENT_POSITION"
         const val ACTIVE_CHECK = "activeCheck"
-        const val PRIVACY_POLICY_URL = "https://watarumorioka.github.io/SecurityPolicy/policy.html"
+        const val PRIVACY_POLICY_URL = "https://wataru-morioka.github.io/security-policy/policy.html"
 
         var instance: SingletonService? = null
             private set
